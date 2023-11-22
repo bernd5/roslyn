@@ -1469,6 +1469,8 @@ namespace Microsoft.CodeAnalysis.CSharp
             Debug.Assert(!diagnostics.HasAnyErrors(), "Running code generator when errors exist might be dangerous; code generator not expecting errors");
 
             var compilation = moduleBuilder.Compilation;
+            OnGenerateMethodBodyEvent.RaiseOnGenerateMethodBody(compilation, method, block);
+
             var localSlotManager = new LocalSlotManager(variableSlotAllocatorOpt);
             var optimizations = compilation.Options.OptimizationLevel;
 
