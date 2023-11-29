@@ -9,7 +9,6 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Microsoft.CodeAnalysis.CodeGen;
-using Microsoft.CodeAnalysis.CSharp.Compiler;
 using Microsoft.CodeAnalysis.CSharp.Emit;
 using Microsoft.CodeAnalysis.CSharp.Symbols;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -200,10 +199,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             {
                 return VisitExpressionImpl(expr);
             }
-            if (OnCustomLoweringEvent.RaiseOnCustomLowering(this, node) is { HasValue: true, Value: var customLowered })
-            {
-                return (BoundStatement?)customLowered;
-            }
+
             return node.Accept(this);
         }
 
@@ -228,21 +224,11 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
             Debug.Assert(!node.HasErrors, "nodes with errors should not be lowered");
 
-            if (OnCustomLoweringEvent.RaiseOnCustomLowering(this, node) is { HasValue: true, Value: var customLowered })
-            {
-                return (BoundStatement?)customLowered;
-            }
-
             return (BoundStatement?)node.Accept(this);
         }
 
         private BoundExpression? VisitExpressionImpl(BoundExpression node)
         {
-            if (OnCustomLoweringEvent.RaiseOnCustomLowering(this, node) is { HasValue: true, Value: var customLowered })
-            {
-                return (BoundExpression?)customLowered;
-            }
-
             if (node is BoundNameOfOperator nameofOperator)
             {
                 Debug.Assert(!nameofOperator.WasCompilerGenerated);
