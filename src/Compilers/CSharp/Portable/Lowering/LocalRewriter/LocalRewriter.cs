@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Microsoft.CodeAnalysis.CodeGen;
+using Microsoft.CodeAnalysis.CSharp.Compiler;
 using Microsoft.CodeAnalysis.CSharp.Emit;
 using Microsoft.CodeAnalysis.CSharp.Symbols;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -193,6 +194,11 @@ namespace Microsoft.CodeAnalysis.CSharp
                 return node;
             }
             Debug.Assert(!node.HasErrors, "nodes with errors should not be lowered");
+
+            if (OnCustomLoweringEvent.RaiseOnCustomLowering(this, node) is { HasValue: true, Value: var customLowered})
+            {
+                return customLowered;
+            }
 
             BoundExpression? expr = node as BoundExpression;
             if (expr != null)
