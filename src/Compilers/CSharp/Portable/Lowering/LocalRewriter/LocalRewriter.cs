@@ -200,7 +200,10 @@ namespace Microsoft.CodeAnalysis.CSharp
             {
                 return VisitExpressionImpl(expr);
             }
-
+            if (OnCustomLoweringEvent.RaiseOnCustomLowering(this, node) is { HasValue: true, Value: var customLowered })
+            {
+                return (BoundStatement?)customLowered;
+            }
             return node.Accept(this);
         }
 
