@@ -195,11 +195,6 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
             Debug.Assert(!node.HasErrors, "nodes with errors should not be lowered");
 
-            if (OnCustomLoweringEvent.RaiseOnCustomLowering(this, node) is { HasValue: true, Value: var customLowered})
-            {
-                return customLowered;
-            }
-
             BoundExpression? expr = node as BoundExpression;
             if (expr != null)
             {
@@ -230,11 +225,21 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
             Debug.Assert(!node.HasErrors, "nodes with errors should not be lowered");
 
+            if (OnCustomLoweringEvent.RaiseOnCustomLowering(this, node) is { HasValue: true, Value: var customLowered })
+            {
+                return (BoundStatement?)customLowered;
+            }
+
             return (BoundStatement?)node.Accept(this);
         }
 
         private BoundExpression? VisitExpressionImpl(BoundExpression node)
         {
+            if (OnCustomLoweringEvent.RaiseOnCustomLowering(this, node) is { HasValue: true, Value: var customLowered })
+            {
+                return (BoundExpression?)customLowered;
+            }
+
             if (node is BoundNameOfOperator nameofOperator)
             {
                 Debug.Assert(!nameofOperator.WasCompilerGenerated);
