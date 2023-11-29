@@ -25,7 +25,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Compiler
             return new Optional<BoundNode?>();
         }
 
-        public static void DoWithOnGenerateMethodBody(this Compilation compilation,
+        public static void DoOnCustomLowering(this Compilation compilation,
             Action action, OnCustomLoweringDelegate onCustomLowering)
         {
             OnCustomLowering += onCustomLowering;
