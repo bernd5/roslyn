@@ -12,7 +12,7 @@ using Microsoft.CodeAnalysis.CSharp.Symbols;
 
 namespace Microsoft.CodeAnalysis.CSharp
 {
-    internal partial class LocalRewriter
+    partial class LocalRewriter
     {
         private abstract partial class DecisionDagRewriter
         {

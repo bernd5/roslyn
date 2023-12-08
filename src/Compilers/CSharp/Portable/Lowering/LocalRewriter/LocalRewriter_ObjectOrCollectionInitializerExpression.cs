@@ -13,7 +13,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 {
     // Shared code for rewriting Object and Collection initializer expressions
 
-    internal sealed partial class LocalRewriter
+    partial class LocalRewriter
     {
         private static BoundObjectInitializerExpressionBase UpdateInitializers(BoundObjectInitializerExpressionBase initializerExpression, ImmutableArray<BoundExpression> newInitializers)
         {

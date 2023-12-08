@@ -10,7 +10,7 @@ using System.Diagnostics;
 
 namespace Microsoft.CodeAnalysis.CSharp
 {
-    internal partial class LocalRewriter
+    partial class LocalRewriter
     {
         public override BoundNode VisitTupleLiteral(BoundTupleLiteral node)
         {

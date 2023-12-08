@@ -8,7 +8,7 @@ using Roslyn.Utilities;
 
 namespace Microsoft.CodeAnalysis.CSharp
 {
-    internal sealed partial class LocalRewriter
+    partial class LocalRewriter
     {
         public override BoundNode VisitConditionalAccess(BoundConditionalAccess node)
         {
