@@ -18,7 +18,7 @@ using static Microsoft.CodeAnalysis.CSharp.SyntheticBoundNodeFactory;
 
 namespace Microsoft.CodeAnalysis.CSharp
 {
-    internal partial class LocalRewriter
+    partial class LocalRewriter
     {
         /// <summary>
         /// A common base class for lowering a decision dag.

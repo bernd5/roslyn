@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis.CSharp.Symbols;
 
 namespace Microsoft.CodeAnalysis.CSharp
 {
-    internal sealed partial class LocalRewriter
+    partial class LocalRewriter
     {
         public override BoundNode VisitNullCoalescingOperator(BoundNullCoalescingOperator node)
         {

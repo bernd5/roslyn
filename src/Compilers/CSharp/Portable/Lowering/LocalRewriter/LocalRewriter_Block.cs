@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis.Shared.Collections;
 
 namespace Microsoft.CodeAnalysis.CSharp
 {
-    internal sealed partial class LocalRewriter
+    partial class LocalRewriter
     {
         public override BoundNode VisitBlock(BoundBlock node)
         {

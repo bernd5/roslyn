@@ -11,7 +11,7 @@ using System.Collections.Immutable;
 
 namespace Microsoft.CodeAnalysis.CSharp
 {
-    internal sealed partial class LocalRewriter
+    partial class LocalRewriter
     {
         public override BoundNode VisitIfStatement(BoundIfStatement node)
         {

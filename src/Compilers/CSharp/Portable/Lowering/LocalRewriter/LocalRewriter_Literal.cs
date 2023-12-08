@@ -12,7 +12,7 @@ using Roslyn.Utilities;
 
 namespace Microsoft.CodeAnalysis.CSharp
 {
-    internal partial class LocalRewriter
+    partial class LocalRewriter
     {
         public override BoundNode VisitLiteral(BoundLiteral node)
         {
