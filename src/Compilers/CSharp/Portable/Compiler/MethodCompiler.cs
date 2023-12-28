@@ -1368,6 +1368,19 @@ namespace Microsoft.CodeAnalysis.CSharp
 
             try
             {
+                if (OnLowerMethodBodyEvent.HasCustomOnLowerMethod)
+                {
+                    if (OnLowerMethodBodyEvent.RaiseOnLowerMethodBody(method,
+                        methodOrdinal, body, previousSubmissionFields, compilationState, instrumentation,
+                        debugDocumentProvider, out codeCoverageSpans, diagnostics,
+                        ref lazyVariableSlotAllocator, lambdaDebugInfoBuilder,
+                        lambdaRuntimeRudeEditsBuilder, closureDebugInfoBuilder, stateMachineStateDebugInfoBuilder,
+                        out stateMachineTypeOpt) is { } l)
+                    {
+                        return l;
+                    }
+                }
+
                 var loweredBody = LocalRewriter.Rewrite(
                     method.DeclaringCompilation,
                     method,
