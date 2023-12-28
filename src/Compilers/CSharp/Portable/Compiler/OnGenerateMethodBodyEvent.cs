@@ -3,24 +3,33 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using Microsoft.Cci;
 using Microsoft.CodeAnalysis.CSharp.Symbols;
 
 namespace Microsoft.CodeAnalysis.CSharp
 {
     internal static class OnGenerateMethodBodyEvent
     {
-        private static event Action<Compilation, MethodSymbol, BoundStatement>? OnGenerateMethodBody;
+        private static event Func<Compilation, MethodSymbol, BoundStatement, IMethodBody?>? OnGenerateMethodBody;
 
-        public static void RaiseOnGenerateMethodBody(Compilation compilation, MethodSymbol method, BoundStatement block)
+        /// <summary>
+        /// allows to customize the method body generation
+        /// </summary>
+        /// <param name="compilation"></param>
+        /// <param name="method"></param>
+        /// <param name="block"></param>
+        /// <returns>returning "false" means to not execute the default method body generation</returns>
+        public static IMethodBody? RaiseOnGenerateMethodBody(Compilation compilation, MethodSymbol method, BoundStatement block)
         {
             if (OnGenerateMethodBody is { } e)
             {
-                e.Invoke(compilation, method, block);
+                return e.Invoke(compilation, method, block);
             }
+            return null;
         }
 
         public static void DoWithOnGenerateMethodBody(this Compilation compilation,
-            Action action, Action<IMethodSymbol, BoundStatement> onGenerateMethod)
+            Action action, Func<IMethodSymbol, BoundStatement, IMethodBody> onGenerateMethod)
         {
             OnGenerateMethodBody += handleEvent;
             try
@@ -32,12 +41,13 @@ namespace Microsoft.CodeAnalysis.CSharp
                 OnGenerateMethodBody -= handleEvent;
             }
 
-            void handleEvent(Compilation c, MethodSymbol method, BoundStatement block)
+            IMethodBody? handleEvent(Compilation c, MethodSymbol method, BoundStatement block)
             {
                 if (ReferenceEquals(compilation, c))
                 {
-                    onGenerateMethod(method.GetPublicSymbol(), block);
+                    return onGenerateMethod(method.GetPublicSymbol(), block);
                 }
+                return null;
             }
         }
     }

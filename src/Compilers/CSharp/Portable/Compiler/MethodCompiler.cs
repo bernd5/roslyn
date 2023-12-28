@@ -728,7 +728,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                     // In case of async lambdas, which synthesize a state machine type during the following rewrite, the containing method has already been uniquely named,
                     // so there is no need to produce a unique method ordinal for the corresponding state machine type, whose name includes the (unique) containing method name.
                     const int methodOrdinal = -1;
-                    MethodBody emittedBody = null;
+                    Cci.IMethodBody emittedBody = null;
 
                     try
                     {
@@ -1463,7 +1463,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         /// <summary>
         /// entryPointOpt is only considered for synthesized methods (to recognize the synthesized MoveNext method for async Main)
         /// </summary>
-        private static MethodBody GenerateMethodBody(
+        private static Cci.IMethodBody GenerateMethodBody(
             PEModuleBuilder moduleBuilder,
             MethodSymbol method,
             int methodOrdinal,
@@ -1485,7 +1485,10 @@ namespace Microsoft.CodeAnalysis.CSharp
             Debug.Assert(!diagnostics.HasAnyErrors(), "Running code generator when errors exist might be dangerous; code generator not expecting errors");
 
             var compilation = moduleBuilder.Compilation;
-            OnGenerateMethodBodyEvent.RaiseOnGenerateMethodBody(compilation, method, block);
+            if (OnGenerateMethodBodyEvent.RaiseOnGenerateMethodBody(compilation, method, block) is { } customBody)
+            {
+                return customBody;
+            }
 
             var localSlotManager = new LocalSlotManager(variableSlotAllocatorOpt);
             var optimizations = compilation.Options.OptimizationLevel;
