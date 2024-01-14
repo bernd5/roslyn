@@ -6,10 +6,7 @@
 
 using System;
 using System.IO;
-using System.Linq;
 using System.Text;
-using System.Xml;
-using System.Xml.Serialization;
 
 namespace BoundTreeGenerator
 {
@@ -47,10 +44,11 @@ namespace BoundTreeGenerator
             }
 
             Tree tree;
-            var serializer = new XmlSerializer(typeof(Tree));
-            using (var reader = XmlReader.Create(infilename, new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit }))
+            using (var stream = new FileStream(infilename, FileMode.Open, FileAccess.Read))
             {
-                tree = (Tree)serializer.Deserialize(reader);
+                var deserializer = new Deserializer();
+                deserializer.OnObjectDeserialized += (element, obj) => CommentHandler.HandleElementComment(element, obj);
+                tree = deserializer.DeserializeElement<Tree>(stream);
             }
 
             if (!ValidateTree(tree))
