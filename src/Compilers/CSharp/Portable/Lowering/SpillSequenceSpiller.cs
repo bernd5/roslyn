@@ -15,7 +15,7 @@ using Roslyn.Utilities;
 
 namespace Microsoft.CodeAnalysis.CSharp
 {
-    internal /*sealed*/ class SpillSequenceSpiller : BoundTreeRewriterWithStackGuard
+    internal sealed partial class SpillSequenceSpiller : BoundTreeRewriterWithStackGuard
     {
         private const BoundKind SpillSequenceBuilderKind = (BoundKind)byte.MaxValue;
 
