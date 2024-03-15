@@ -1370,9 +1370,10 @@ namespace Microsoft.CodeAnalysis.CSharp
 
             try
             {
-                if (OnLowerMethodBodyEvent.HasCustomOnLowerMethod)
+                var module = compilationState.ModuleBuilderOpt;
+                if (compilationState.ModuleBuilderOpt.HasCustomOnLowerMethod)
                 {
-                    if (OnLowerMethodBodyEvent.RaiseOnLowerMethodBody(method,
+                    if (compilationState.ModuleBuilderOpt.RaiseOnLowerMethodBody(method,
                         methodOrdinal, body, previousSubmissionFields, compilationState, instrumentation,
                         debugDocumentProvider, out codeCoverageSpans, diagnostics,
                         ref lazyVariableSlotAllocator, lambdaDebugInfoBuilder,
@@ -1499,12 +1500,12 @@ namespace Microsoft.CodeAnalysis.CSharp
             // Note: don't call diagnostics.HasAnyErrors() in release; could be expensive if compilation has many warnings.
             Debug.Assert(!diagnostics.HasAnyErrors(), "Running code generator when errors exist might be dangerous; code generator not expecting errors");
 
-            var compilation = moduleBuilder.Compilation;
-            if (OnGenerateMethodBodyEvent.RaiseOnGenerateMethodBody(compilation, method, block) is { } customBody)
+            if (moduleBuilder.RaiseOnGenerateMethodBody(method, block) is { } customBody)
             {
                 return customBody;
             }
 
+            var compilation = moduleBuilder.Compilation;
             var localSlotManager = new LocalSlotManager(variableSlotAllocatorOpt);
             var optimizations = compilation.Options.OptimizationLevel;
 

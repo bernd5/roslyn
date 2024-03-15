@@ -9,15 +9,15 @@ using Microsoft.CodeAnalysis.CSharp.Symbols;
 using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.PooledObjects;
 
-namespace Microsoft.CodeAnalysis.CSharp
+namespace Microsoft.CodeAnalysis.CSharp.Emit
 {
-    internal static class OnLowerMethodBodyEvent
+    partial class PEModuleBuilder
     {
-        public static bool HasCustomOnLowerMethod => OnLowerMethodBody != null;
+        public bool HasCustomOnLowerMethod => OnLowerMethodBody != null;
 
         public delegate void OnCustomLower(ref LowerEventData data);
 
-        private static event OnCustomLower? OnLowerMethodBody;
+        public event OnCustomLower? OnLowerMethodBody;
 
         public record struct LowerEventData(MethodSymbol method,
             int methodOrdinal,
@@ -39,7 +39,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             public BoundStatement? loweredBody;
         }
 
-        public static BoundStatement? RaiseOnLowerMethodBody(
+        public BoundStatement? RaiseOnLowerMethodBody(
             MethodSymbol method,
             int methodOrdinal,
             BoundStatement body,
@@ -78,19 +78,6 @@ namespace Microsoft.CodeAnalysis.CSharp
             codeCoverageSpans = default;
             stateMachineTypeOpt = null;
             return null;
-        }
-
-        public static void DoWithOnLowerMethodBody(Action action, OnCustomLower onLower)
-        {
-            OnLowerMethodBody += onLower;
-            try
-            {
-                action();
-            }
-            finally
-            {
-                OnLowerMethodBody -= onLower;
-            }
         }
     }
 }
