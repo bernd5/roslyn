@@ -1371,9 +1371,9 @@ namespace Microsoft.CodeAnalysis.CSharp
             try
             {
                 var module = compilationState.ModuleBuilderOpt;
-                if (compilationState.ModuleBuilderOpt.HasCustomOnLowerMethod)
+                if (module.HasCustomOnLowerMethod)
                 {
-                    if (compilationState.ModuleBuilderOpt.RaiseOnLowerMethodBody(method,
+                    if (module.RaiseOnLowerMethodBody(method,
                         methodOrdinal, body, previousSubmissionFields, compilationState, instrumentation,
                         debugDocumentProvider, out codeCoverageSpans, diagnostics,
                         ref lazyVariableSlotAllocator, lambdaDebugInfoBuilder,
