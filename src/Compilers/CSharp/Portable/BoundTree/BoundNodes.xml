@@ -2558,5 +2558,9 @@
     <!-- Members and expressions passed as arguments to the With expression. -->
     <Field Name="InitializerExpression" Type="BoundObjectInitializerExpressionBase" />
   </Node>
-
+  
+  <!-- CSN Nodes -->
+  <Node Name="BoundConstCastExpression" Base="BoundExpression">
+    <Field Name="Expression" Type="BoundExpression"/>
+  </Node>
 </Tree>

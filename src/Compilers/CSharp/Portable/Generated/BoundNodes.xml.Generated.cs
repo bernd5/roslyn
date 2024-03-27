@@ -252,6 +252,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         ConstructorMethodBody,
         ExpressionWithNullability,
         WithExpression,
+        ConstCastExpression,
     }
 
 
@@ -8827,6 +8828,34 @@ namespace Microsoft.CodeAnalysis.CSharp
         }
     }
 
+    internal sealed partial class BoundConstCastExpression : BoundExpression
+    {
+        public BoundConstCastExpression(SyntaxNode syntax, BoundExpression expression, TypeSymbol? type, bool hasErrors = false)
+            : base(BoundKind.ConstCastExpression, syntax, type, hasErrors || expression.HasErrors())
+        {
+
+            RoslynDebug.Assert(expression is object, "Field 'expression' cannot be null (make the type nullable in BoundNodes.xml to remove this check)");
+
+            this.Expression = expression;
+        }
+
+        public BoundExpression Expression { get; }
+
+        [DebuggerStepThrough]
+        public override BoundNode? Accept(BoundTreeVisitor visitor) => visitor.VisitConstCastExpression(this);
+
+        public BoundConstCastExpression Update(BoundExpression expression, TypeSymbol? type)
+        {
+            if (expression != this.Expression || !TypeSymbol.Equals(type, this.Type, TypeCompareKind.ConsiderEverything))
+            {
+                var result = new BoundConstCastExpression(this.Syntax, expression, type, this.HasErrors);
+                result.CopyAttributes(this);
+                return result;
+            }
+            return this;
+        }
+    }
+
     internal abstract partial class BoundTreeVisitor<A, R>
     {
 
@@ -9299,6 +9328,8 @@ namespace Microsoft.CodeAnalysis.CSharp
                     return VisitExpressionWithNullability((BoundExpressionWithNullability)node, arg);
                 case BoundKind.WithExpression:
                     return VisitWithExpression((BoundWithExpression)node, arg);
+                case BoundKind.ConstCastExpression:
+                    return VisitConstCastExpression((BoundConstCastExpression)node, arg);
             }
 
             return default(R)!;
@@ -9539,6 +9570,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         public virtual R VisitConstructorMethodBody(BoundConstructorMethodBody node, A arg) => this.DefaultVisit(node, arg);
         public virtual R VisitExpressionWithNullability(BoundExpressionWithNullability node, A arg) => this.DefaultVisit(node, arg);
         public virtual R VisitWithExpression(BoundWithExpression node, A arg) => this.DefaultVisit(node, arg);
+        public virtual R VisitConstCastExpression(BoundConstCastExpression node, A arg) => this.DefaultVisit(node, arg);
     }
 
     internal abstract partial class BoundTreeVisitor
@@ -9775,6 +9807,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         public virtual BoundNode? VisitConstructorMethodBody(BoundConstructorMethodBody node) => this.DefaultVisit(node);
         public virtual BoundNode? VisitExpressionWithNullability(BoundExpressionWithNullability node) => this.DefaultVisit(node);
         public virtual BoundNode? VisitWithExpression(BoundWithExpression node) => this.DefaultVisit(node);
+        public virtual BoundNode? VisitConstCastExpression(BoundConstCastExpression node) => this.DefaultVisit(node);
     }
 
     internal abstract partial class BoundTreeWalker : BoundTreeVisitor
@@ -10796,6 +10829,11 @@ namespace Microsoft.CodeAnalysis.CSharp
         {
             this.Visit(node.Receiver);
             this.Visit(node.InitializerExpression);
+            return null;
+        }
+        public override BoundNode? VisitConstCastExpression(BoundConstCastExpression node)
+        {
+            this.Visit(node.Expression);
             return null;
         }
     }
@@ -12215,6 +12253,12 @@ namespace Microsoft.CodeAnalysis.CSharp
             BoundObjectInitializerExpressionBase initializerExpression = (BoundObjectInitializerExpressionBase)this.Visit(node.InitializerExpression);
             TypeSymbol? type = this.VisitType(node.Type);
             return node.Update(receiver, node.CloneMethod, initializerExpression, type);
+        }
+        public override BoundNode? VisitConstCastExpression(BoundConstCastExpression node)
+        {
+            BoundExpression expression = (BoundExpression)this.Visit(node.Expression);
+            TypeSymbol? type = this.VisitType(node.Type);
+            return node.Update(expression, type);
         }
     }
 
@@ -14959,6 +15003,23 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
             return updatedNode;
         }
+
+        public override BoundNode? VisitConstCastExpression(BoundConstCastExpression node)
+        {
+            BoundExpression expression = (BoundExpression)this.Visit(node.Expression);
+            BoundConstCastExpression updatedNode;
+
+            if (_updatedNullabilities.TryGetValue(node, out (NullabilityInfo Info, TypeSymbol? Type) infoAndType))
+            {
+                updatedNode = node.Update(expression, infoAndType.Type);
+                updatedNode.TopLevelNullability = infoAndType.Info;
+            }
+            else
+            {
+                updatedNode = node.Update(expression, node.Type);
+            }
+            return updatedNode;
+        }
     }
 
     internal sealed class BoundTreeDumperNodeProducer : BoundTreeVisitor<object?, TreeDumperNode>
@@ -17120,6 +17181,14 @@ namespace Microsoft.CodeAnalysis.CSharp
             new TreeDumperNode("receiver", null, new TreeDumperNode[] { Visit(node.Receiver, null) }),
             new TreeDumperNode("cloneMethod", node.CloneMethod, null),
             new TreeDumperNode("initializerExpression", null, new TreeDumperNode[] { Visit(node.InitializerExpression, null) }),
+            new TreeDumperNode("type", node.Type, null),
+            new TreeDumperNode("isSuppressed", node.IsSuppressed, null),
+            new TreeDumperNode("hasErrors", node.HasErrors, null)
+        }
+        );
+        public override TreeDumperNode VisitConstCastExpression(BoundConstCastExpression node, object? arg) => new TreeDumperNode("constCastExpression", null, new TreeDumperNode[]
+        {
+            new TreeDumperNode("expression", null, new TreeDumperNode[] { Visit(node.Expression, null) }),
             new TreeDumperNode("type", node.Type, null),
             new TreeDumperNode("isSuppressed", node.IsSuppressed, null),
             new TreeDumperNode("hasErrors", node.HasErrors, null)
