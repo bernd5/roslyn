@@ -29,11 +29,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Emit
             ImmutableArray<SourceSpan> codeCoverageSpans,
             BindingDiagnosticBag diagnostics,
             VariableSlotAllocator lazyVariableSlotAllocator,
-            ArrayBuilder<EncLambdaInfo> lambdaDebugInfoBuilder,
-            ArrayBuilder<LambdaRuntimeRudeEditInfo> lambdaRuntimeRudeEditsBuilder,
-            ArrayBuilder<EncClosureInfo> closureDebugInfoBuilder,
+            ArrayBuilder<EncLambdaInfo>? lambdaDebugInfoBuilder,
+            ArrayBuilder<LambdaRuntimeRudeEditInfo>? lambdaRuntimeRudeEditsBuilder,
+            ArrayBuilder<EncClosureInfo>? closureDebugInfoBuilder,
             ArrayBuilder<StateMachineStateDebugInfo> stateMachineStateDebugInfoBuilder,
-            StateMachineTypeSymbol? stateMachineTypeOpt
+            StateMachineTypeSymbol? stateMachineTypeOpt,
+            bool isSynthesizedMethod
         )
         {
             public BoundStatement? loweredBody;
@@ -50,11 +51,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Emit
             out ImmutableArray<SourceSpan> codeCoverageSpans,
             BindingDiagnosticBag diagnostics,
             ref VariableSlotAllocator lazyVariableSlotAllocator,
-            ArrayBuilder<EncLambdaInfo> lambdaDebugInfoBuilder,
-            ArrayBuilder<LambdaRuntimeRudeEditInfo> lambdaRuntimeRudeEditsBuilder,
-            ArrayBuilder<EncClosureInfo> closureDebugInfoBuilder,
+            ArrayBuilder<EncLambdaInfo>? lambdaDebugInfoBuilder,
+            ArrayBuilder<LambdaRuntimeRudeEditInfo>? lambdaRuntimeRudeEditsBuilder,
+            ArrayBuilder<EncClosureInfo>? closureDebugInfoBuilder,
             ArrayBuilder<StateMachineStateDebugInfo> stateMachineStateDebugInfoBuilder,
-            out StateMachineTypeSymbol? stateMachineTypeOpt)
+            out StateMachineTypeSymbol? stateMachineTypeOpt,
+            bool isSynthesizedMethod = false)
         {
             if (OnLowerMethodBody is { } e)
             {
@@ -63,7 +65,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Emit
                 var state = new LowerEventData(method, methodOrdinal, body, previousSubmissionFields,
                     compilationState, instrumentation, debugDocumentProvider, codeCoverageSpans, diagnostics,
                     lazyVariableSlotAllocator, lambdaDebugInfoBuilder, lambdaRuntimeRudeEditsBuilder,
-                    closureDebugInfoBuilder, stateMachineStateDebugInfoBuilder, stateMachineTypeOpt);
+                    closureDebugInfoBuilder, stateMachineStateDebugInfoBuilder, stateMachineTypeOpt, isSynthesizedMethod);
 
                 e.Invoke(ref state);
                 if (state.loweredBody is { } lowered)

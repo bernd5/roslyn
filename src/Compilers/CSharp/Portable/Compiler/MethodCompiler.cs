@@ -732,18 +732,48 @@ namespace Microsoft.CodeAnalysis.CSharp
 
                     try
                     {
-                        // Local functions can be iterators as well as be async (lambdas can only be async), so we need to lower both iterators and async
-                        IteratorStateMachine iteratorStateMachine;
-                        BoundStatement loweredBody = IteratorRewriter.Rewrite(methodWithBody.Body, method, methodOrdinal, stateMachineStateDebugInfoBuilder, variableSlotAllocatorOpt, compilationState, diagnosticsThisMethod, out iteratorStateMachine);
-                        StateMachineTypeSymbol stateMachine = iteratorStateMachine;
+                        BoundStatement loweredBody;
+                        StateMachineTypeSymbol stateMachine;
 
-                        if (!loweredBody.HasErrors)
+                        if (_moduleBeingBuiltOpt.HasCustomOnLowerMethod)
                         {
-                            AsyncStateMachine asyncStateMachine;
-                            loweredBody = AsyncRewriter.Rewrite(loweredBody, method, methodOrdinal, stateMachineStateDebugInfoBuilder, variableSlotAllocatorOpt, compilationState, diagnosticsThisMethod, out asyncStateMachine);
+                            if (_moduleBeingBuiltOpt.RaiseOnLowerMethodBody(method,
+                                methodOrdinal, methodWithBody.Body,
+                                previousSubmissionFields: null,
+                                compilationState,
+                                instrumentation: default,
+                                debugDocumentProvider: null, out var codeCoverageSpans,
+                                diagnosticsThisMethod,
+                                ref variableSlotAllocatorOpt,
+                                lambdaDebugInfoBuilder: null,
+                                lambdaRuntimeRudeEditsBuilder: null,
+                                closureDebugInfoBuilder: null,
+                                stateMachineStateDebugInfoBuilder,
+                                out stateMachine,
+                                isSynthesizedMethod: true) is { } l)
+                            {
+                                loweredBody = l;
+                            }
+                            else
+                            {
+                                throw new InvalidOperationException();
+                            }
+                        }
+                        else
+                        {
+                            // Local functions can be iterators as well as be async (lambdas can only be async), so we need to lower both iterators and async
+                            IteratorStateMachine iteratorStateMachine;
+                            loweredBody = IteratorRewriter.Rewrite(methodWithBody.Body, method, methodOrdinal, stateMachineStateDebugInfoBuilder, variableSlotAllocatorOpt, compilationState, diagnosticsThisMethod, out iteratorStateMachine);
+                            stateMachine = iteratorStateMachine;
 
-                            Debug.Assert((object)iteratorStateMachine == null || (object)asyncStateMachine == null);
-                            stateMachine = stateMachine ?? asyncStateMachine;
+                            if (!loweredBody.HasErrors)
+                            {
+                                AsyncStateMachine asyncStateMachine;
+                                loweredBody = AsyncRewriter.Rewrite(loweredBody, method, methodOrdinal, stateMachineStateDebugInfoBuilder, variableSlotAllocatorOpt, compilationState, diagnosticsThisMethod, out asyncStateMachine);
+
+                                Debug.Assert((object)iteratorStateMachine == null || (object)asyncStateMachine == null);
+                                stateMachine = stateMachine ?? asyncStateMachine;
+                            }
                         }
 
                         SetGlobalErrorIfTrue(diagnosticsThisMethod.HasAnyErrors());
