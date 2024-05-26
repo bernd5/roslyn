@@ -2299,7 +2299,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         ///   3) If the result type of the chosen multiplication operator is signed, convert the product to IntPtr;
         ///      otherwise, convert the product to UIntPtr.
         /// </summary>
-        private BoundExpression MakeSizeOfMultiplication(BoundExpression numericOperand, PointerTypeSymbol pointerType, bool isChecked)
+        protected virtual BoundExpression MakeSizeOfMultiplication(BoundExpression numericOperand, PointerTypeSymbol pointerType, bool isChecked)
         {
             var sizeOfExpression = _factory.Sizeof(pointerType.PointedAtType);
             Debug.Assert(sizeOfExpression.Type is { SpecialType: SpecialType.System_Int32 });
