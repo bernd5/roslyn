@@ -50,6 +50,13 @@ internal static class SharedPoolExtensions
         return pooledObject;
     }
 
+    public static PooledObject<SegmentedList<TItem>> GetPooledObject<TItem>(this ObjectPool<SegmentedList<TItem>> pool, out SegmentedList<TItem> list)
+    {
+        var pooledObject = PooledObject<SegmentedList<TItem>>.Create(pool);
+        list = pooledObject.Object;
+        return pooledObject;
+    }
+
     public static PooledObject<HashSet<TItem>> GetPooledObject<TItem>(this ObjectPool<HashSet<TItem>> pool, out HashSet<TItem> list)
     {
         var pooledObject = PooledObject<HashSet<TItem>>.Create(pool);
@@ -194,22 +201,18 @@ internal static class SharedPoolExtensions
         pool.Free(set);
     }
 
-    public static void ClearAndFree<T>(this ObjectPool<Stack<T>> pool, Stack<T> set)
+    public static void ClearAndFree<T>(this ObjectPool<Stack<T>> pool, Stack<T> stack)
     {
-        if (set == null)
-        {
+        if (stack == null)
             return;
-        }
 
-        var count = set.Count;
-        set.Clear();
+        var count = stack.Count;
+        stack.Clear();
 
-        if (count > Threshold)
-        {
-            set.TrimExcess();
-        }
+        if (count > Threshold && pool.TrimOnFree)
+            stack.TrimExcess();
 
-        pool.Free(set);
+        pool.Free(stack);
     }
 
     public static void ClearAndFree<T>(this ObjectPool<ConcurrentStack<T>> pool, ConcurrentStack<T> stack)
