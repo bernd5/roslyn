@@ -2377,6 +2377,11 @@
         <target state="translated">criteri di proprietà estesa</target>
         <note />
       </trans-unit>
+      <trans-unit id="IDS_FeatureFieldAndValueKeywords">
+        <source>field and value keywords</source>
+        <target state="new">field and value keywords</target>
+        <note />
+      </trans-unit>
       <trans-unit id="IDS_FeatureFileScopedNamespace">
         <source>file-scoped namespace</source>
         <target state="translated">spazio dei nomi con ambito file</target>
@@ -2600,6 +2605,16 @@
       <trans-unit id="IDS_SK_POINTER">
         <source>pointer</source>
         <target state="translated">indicatore di misura</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="INF_IdentifierConflictWithContextualKeyword">
+        <source>'{0}' is a contextual keyword in property accessors starting in language version {1}. Use '@{0}' instead.</source>
+        <target state="new">'{0}' is a contextual keyword in property accessors starting in language version {1}. Use '@{0}' instead.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="INF_IdentifierConflictWithContextualKeyword_Title">
+        <source>Identifier is a contextual keyword, with a specific meaning, in a later language version.</source>
+        <target state="new">Identifier is a contextual keyword, with a specific meaning, in a later language version.</target>
         <note />
       </trans-unit>
       <trans-unit id="INF_TooManyBoundLambdas">
@@ -2855,36 +2870,6 @@
       <trans-unit id="WRN_DuplicateAnalyzerReference_Title">
         <source>Analyzer reference specified multiple times</source>
         <target state="translated">Riferimento analizzatore specificato più volte</target>
-        <note />
-      </trans-unit>
-      <trans-unit id="WRN_DynamicDispatchToParamsCollectionConstructor">
-        <source>One or more constructor overloads having non-array params collection parameter might be applicable only in expanded form which is not supported during dynamic dispatch.</source>
-        <target state="translated">Uno o più overload del costruttore con parametro di raccolta dei parametri non di matrice possono essere applicati solo in formato espanso che non è supportato durante l'invio dinamico.</target>
-        <note />
-      </trans-unit>
-      <trans-unit id="WRN_DynamicDispatchToParamsCollectionConstructor_Title">
-        <source>One or more constructor overloads having non-array params collection parameter might be applicable only in expanded form which is not supported during dynamic dispatch.</source>
-        <target state="translated">Uno o più overload del costruttore con parametro di raccolta dei parametri non di matrice possono essere applicati solo in formato espanso che non è supportato durante l'invio dinamico.</target>
-        <note />
-      </trans-unit>
-      <trans-unit id="WRN_DynamicDispatchToParamsCollectionIndexer">
-        <source>One or more indexer overloads having non-array params collection parameter might be applicable only in expanded form which is not supported during dynamic dispatch.</source>
-        <target state="translated">Uno o più overload dell'indicizzatore con parametro di raccolta dei parametri non di matrice possono essere applicati solo in formato espanso che non è supportato durante l'invio dinamico.</target>
-        <note />
-      </trans-unit>
-      <trans-unit id="WRN_DynamicDispatchToParamsCollectionIndexer_Title">
-        <source>One or more indexer overloads having non-array params collection parameter might be applicable only in expanded form which is not supported during dynamic dispatch.</source>
-        <target state="translated">Uno o più overload dell'indicizzatore con parametro di raccolta dei parametri non di matrice possono essere applicati solo in formato espanso che non è supportato durante l'invio dinamico.</target>
-        <note />
-      </trans-unit>
-      <trans-unit id="WRN_DynamicDispatchToParamsCollectionMethod">
-        <source>One or more overloads of method '{0}' having non-array params collection parameter might be applicable only in expanded form which is not supported during dynamic dispatch.</source>
-        <target state="translated">Uno o più overload del metodo '{0}' con parametro di raccolta dei parametri non di matrice possono essere applicati solo in formato espanso che non è supportato durante l'invio dinamico.</target>
-        <note />
-      </trans-unit>
-      <trans-unit id="WRN_DynamicDispatchToParamsCollectionMethod_Title">
-        <source>One or more overloads of method having non-array params collection parameter might be applicable only in expanded form which is not supported during dynamic dispatch.</source>
-        <target state="translated">Uno o più overload del metodo con parametro di raccolta dei parametri non di matrice possono essere applicati solo in formato espanso che non è supportato durante l'invio dinamico.</target>
         <note />
       </trans-unit>
       <trans-unit id="WRN_EscapeCall">
