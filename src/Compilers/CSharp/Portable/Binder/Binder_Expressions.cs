@@ -3116,8 +3116,6 @@ namespace Microsoft.CodeAnalysis.CSharp
             var designation = (SingleVariableDesignationSyntax)declarationExpression.Designation;
             TypeSyntax typeSyntax = declarationExpression.Type;
 
-            ReportFieldOrValueContextualKeywordConflictIfAny(designation, designation.Identifier, diagnostics);
-
             // Is this a local?
             SourceLocalSymbol localSymbol = this.LookupLocal(designation.Identifier);
             if ((object)localSymbol != null)
@@ -7510,8 +7508,6 @@ namespace Microsoft.CodeAnalysis.CSharp
 
             boundLeft = MakeMemberAccessValue(boundLeft, diagnostics);
 
-            ReportFieldOrValueContextualKeywordConflictIfAny(right, right.Identifier, diagnostics);
-
             TypeSymbol leftType = boundLeft.Type;
 
             if ((object)leftType != null && leftType.IsDynamic())
@@ -10452,7 +10448,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         /// </summary>
         private MethodSymbol? GetUniqueSignatureFromMethodGroup(BoundMethodGroup node)
         {
-            if (Compilation.LanguageVersion < LanguageVersionFacts.CSharpNext)
+            if (Compilation.LanguageVersion < LanguageVersion.CSharp13)
             {
                 return GetUniqueSignatureFromMethodGroup_CSharp10(node);
             }

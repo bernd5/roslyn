@@ -6632,6 +6632,9 @@ To remove the warning, you can use /reference instead (set the Embed Interop Typ
   <data name="ERR_FeatureNotAvailableInVersion12" xml:space="preserve">
     <value>Feature '{0}' is not available in C# 12.0. Please use language version {1} or greater.</value>
   </data>
+  <data name="ERR_FeatureNotAvailableInVersion13" xml:space="preserve">
+    <value>Feature '{0}' is not available in C# 13.0. Please use language version {1} or greater.</value>
+  </data>
   <data name="ERR_UnexpectedArgumentList" xml:space="preserve">
     <value>Unexpected argument list.</value>
   </data>
@@ -7895,12 +7898,6 @@ To remove the warning, you can use /reference instead (set the Embed Interop Typ
   </data>
   <data name="ERR_InterceptsLocationDataInvalidPosition" xml:space="preserve">
     <value>The data argument to InterceptsLocationAttribute refers to an invalid position in file '{0}'.</value>
-  </data>
-  <data name="WRN_BadYieldInLock" xml:space="preserve">
-    <value>'yield return' should not be used in the body of a lock statement</value>
-  </data>
-  <data name="WRN_BadYieldInLock_Title" xml:space="preserve">
-    <value>'yield return' should not be used in the body of a lock statement</value>
   </data>
   <data name="IDS_FeatureRefUnsafeInIteratorAsync" xml:space="preserve">
     <value>ref and unsafe in async and iterator methods</value>

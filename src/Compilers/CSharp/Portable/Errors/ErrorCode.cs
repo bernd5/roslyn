@@ -2312,7 +2312,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
         #endregion
 
-        WRN_BadYieldInLock = 9237,
+        // available 9237
         ERR_BadYieldInUnsafe = 9238,
         ERR_AddressOfInIterator = 9239,
 
@@ -2339,6 +2339,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         INF_IdentifierConflictWithContextualKeyword = 9258,
 
         ERR_InlineArrayAttributeOnRecord = 9259,
+        ERR_FeatureNotAvailableInVersion13 = 9260,
 
         // Note: you will need to do the following after adding errors:
         //  1) Update ErrorFacts.IsBuildOnlyDiagnostic (src/Compilers/CSharp/Portable/Errors/ErrorFacts.cs)
