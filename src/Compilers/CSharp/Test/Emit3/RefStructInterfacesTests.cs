@@ -21321,8 +21321,50 @@ ref struct S : IEnumerable<int>
                 //     static void Test2([UnscopedRef] params scoped S y)
                 Diagnostic(ErrorCode.ERR_UnscopedScoped, "UnscopedRef").WithLocation(12, 24)
                 );
+        }
 
-            // https://github.com/dotnet/roslyn/issues/73557: Consider testing similar scenario without params
+        [Fact]
+        [WorkItem("https://github.com/dotnet/roslyn/issues/73557")]
+        public void UnscopedRef_03()
+        {
+            var sourceA =
+@"
+using System.Diagnostics.CodeAnalysis;
+using System.Collections.Generic;
+
+public class Helper
+{
+    static void Test1<T>([UnscopedRef] scoped T x)
+        where T : IEnumerable<int>, IAdd, new(), allows ref struct
+    {
+    }
+
+    static void Test2([UnscopedRef] scoped S y)
+    {
+    }
+}
+
+interface IAdd
+{
+    void Add(int x);
+}
+
+ref struct S : IEnumerable<int>
+{
+    public IEnumerator<int> GetEnumerator() => throw null;
+    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => throw null;
+    public void Add(int x){}
+}
+";
+            var comp = CreateCompilation(sourceA, targetFramework: s_targetFrameworkSupportingByRefLikeGenerics);
+            comp.VerifyDiagnostics(
+                // (7,27): error CS9063: UnscopedRefAttribute cannot be applied to this parameter because it is unscoped by default.
+                //     static void Test1<T>([UnscopedRef] scoped T x)
+                Diagnostic(ErrorCode.ERR_UnscopedRefAttributeUnsupportedTarget, "UnscopedRef").WithLocation(7, 27),
+                // (12,24): error CS9063: UnscopedRefAttribute cannot be applied to this parameter because it is unscoped by default.
+                //     static void Test2([UnscopedRef] scoped S y)
+                Diagnostic(ErrorCode.ERR_UnscopedRefAttributeUnsupportedTarget, "UnscopedRef").WithLocation(12, 24)
+                );
         }
 
         [Fact]
@@ -21703,12 +21745,12 @@ ref struct S
                 comp1,
                 verify: ExecutionConditionUtil.IsMonoOrCoreClr ? Verification.Passes : Verification.Skipped).
             VerifyDiagnostics(
-                // (6,7): warning CS9184: 'Inline arrays' language feature is not supported for an inline array type that is not valid as a type argument, or has element type that is not valid as a type argument.
-                //     T _f;
-                Diagnostic(ErrorCode.WRN_InlineArrayNotSupportedByLanguage, "_f").WithLocation(6, 7),
-                // (12,7): warning CS9184: 'Inline arrays' language feature is not supported for an inline array type that is not valid as a type argument, or has element type that is not valid as a type argument.
-                //     S _f;
-                Diagnostic(ErrorCode.WRN_InlineArrayNotSupportedByLanguage, "_f").WithLocation(12, 7)
+                // (3,12): warning CS9184: 'Inline arrays' language feature is not supported for an inline array type that is not valid as a type argument, or has element type that is not valid as a type argument.
+                // ref struct S1<T>
+                Diagnostic(ErrorCode.WRN_InlineArrayNotSupportedByLanguage, "S1").WithLocation(3, 12),
+                // (10,12): warning CS9184: 'Inline arrays' language feature is not supported for an inline array type that is not valid as a type argument, or has element type that is not valid as a type argument.
+                // ref struct S2
+                Diagnostic(ErrorCode.WRN_InlineArrayNotSupportedByLanguage, "S2").WithLocation(10, 12)
                 );
 
             var src2 = @"
@@ -21724,16 +21766,7 @@ struct S2<T2>
             comp2.VerifyDiagnostics(
                 // (6,5): error CS8345: Field or auto-implemented property cannot be of type 'T2' unless it is an instance member of a ref struct.
                 //     T2 _f;
-                Diagnostic(ErrorCode.ERR_FieldAutoPropCantBeByRefLike, "T2").WithArguments("T2").WithLocation(6, 5),
-
-                // https://github.com/dotnet/roslyn/issues/73556:
-                // The warning below is somewhat misleading. 'S2' can be used as a type argument (it is not a ref struct) and 'T2' is a type argument. 
-                // However, given the error above, this is probably not worth fixing. There is no way to declare a legal non-ref struct with a field
-                // of type 'T2'.
-
-                // (6,8): warning CS9184: 'Inline arrays' language feature is not supported for an inline array type that is not valid as a type argument, or has element type that is not valid as a type argument.
-                //     T2 _f;
-                Diagnostic(ErrorCode.WRN_InlineArrayNotSupportedByLanguage, "_f").WithLocation(6, 8)
+                Diagnostic(ErrorCode.ERR_FieldAutoPropCantBeByRefLike, "T2").WithArguments("T2").WithLocation(6, 5)
                 );
         }
 
@@ -21761,9 +21794,9 @@ class C
 
             var comp = CreateCompilation(src, targetFramework: s_targetFrameworkSupportingByRefLikeGenerics);
             comp.VerifyDiagnostics(
-                // (6,7): warning CS9184: 'Inline arrays' language feature is not supported for an inline array type that is not valid as a type argument, or has element type that is not valid as a type argument.
-                //     T _f;
-                Diagnostic(ErrorCode.WRN_InlineArrayNotSupportedByLanguage, "_f").WithLocation(6, 7),
+                // (3,12): warning CS9184: 'Inline arrays' language feature is not supported for an inline array type that is not valid as a type argument, or has element type that is not valid as a type argument.
+                // ref struct S1<T>
+                Diagnostic(ErrorCode.WRN_InlineArrayNotSupportedByLanguage, "S1").WithLocation(3, 12),
                 // (14,9): error CS0306: The type 'S1<int>' may not be used as a type argument
                 //         x[0] = 123;
                 Diagnostic(ErrorCode.ERR_BadTypeArgument, "x[0]").WithArguments("S1<int>").WithLocation(14, 9)
@@ -21801,9 +21834,9 @@ namespace System.Runtime.CompilerServices
 
             var comp = CreateCompilation(src, targetFramework: s_targetFrameworkSupportingByRefLikeGenerics, options: TestOptions.DebugExe);
             comp.VerifyEmitDiagnostics(
-                // (6,7): warning CS9184: 'Inline arrays' language feature is not supported for an inline array type that is not valid as a type argument, or has element type that is not valid as a type argument.
-                //     T _f;
-                Diagnostic(ErrorCode.WRN_InlineArrayNotSupportedByLanguage, "_f").WithLocation(6, 7),
+                // (3,12): warning CS9184: 'Inline arrays' language feature is not supported for an inline array type that is not valid as a type argument, or has element type that is not valid as a type argument.
+                // ref struct S1<T>
+                Diagnostic(ErrorCode.WRN_InlineArrayNotSupportedByLanguage, "S1").WithLocation(3, 12),
                 // (14,9): error CS0306: The type 'S1<int>' may not be used as a type argument
                 //         x[0] = 123;
                 Diagnostic(ErrorCode.ERR_BadTypeArgument, "x[0]").WithArguments("S1<int>").WithLocation(14, 9)
@@ -21884,8 +21917,6 @@ ref struct S
                 //     protected abstract override S Test2(S y);
                 Diagnostic(ErrorCode.ERR_ScopedMismatchInParameterOfOverrideOrImplementation, "Test2").WithArguments("y").WithLocation(14, 35)
                 );
-
-            // https://github.com/dotnet/roslyn/issues/73555: Consider testing similar scenario with implicitly scoped parameter
         }
 
         [Fact]
@@ -21928,8 +21959,198 @@ ref struct S
                 //     protected abstract override void Test2(S y, out S z);
                 Diagnostic(ErrorCode.ERR_ScopedMismatchInParameterOfOverrideOrImplementation, "Test2").WithArguments("y").WithLocation(14, 38)
                 );
+        }
 
-            // https://github.com/dotnet/roslyn/issues/73554: Consider testing ERR_ScopedMismatchInParameterOfPartial and ERR_ScopedMismatchInParameterOfTarget.
+        [Fact]
+        [WorkItem("https://github.com/dotnet/roslyn/issues/73555")]
+        public void MissingScopedInOverride_03()
+        {
+            var src = @"
+abstract class Base
+{
+    protected abstract T Test1<T>(out T x)
+        where T : allows ref struct;
+
+    protected abstract S Test2(out S y);
+
+    protected abstract T Test3<T>(scoped out T x)
+        where T : allows ref struct;
+
+    protected abstract S Test4(scoped out S y);
+}
+
+abstract class Derived1 : Base
+{
+    protected abstract override T Test1<T>(out T x);
+
+    protected abstract override S Test2(out S y);
+
+    protected abstract override T Test3<T>(out T x);
+
+    protected abstract override S Test4(out S y);
+}
+
+abstract class Derived2 : Base
+{
+    protected abstract override T Test1<T>(scoped out T x);
+
+    protected abstract override S Test2(scoped out S y);
+
+    protected abstract override T Test3<T>(scoped out T x);
+
+    protected abstract override S Test4(scoped out S y);
+}
+
+ref struct S
+{
+}
+";
+
+            var comp = CreateCompilation(src, targetFramework: s_targetFrameworkSupportingByRefLikeGenerics);
+            comp.VerifyEmitDiagnostics();
+        }
+
+        [Fact]
+        [WorkItem("https://github.com/dotnet/roslyn/issues/73554")]
+        public void MissingScopedInPartial_01()
+        {
+            var src = @"
+partial class C1
+{
+    private partial void Test1<T>(scoped T x, out T z) where T : allows ref struct;
+
+    private partial void Test2(scoped S y, out S z);
+}
+
+partial class C1
+{
+    private partial void Test1<T>(T x, out T z) where T : allows ref struct => throw null;
+
+    private partial void Test2(S y, out S z) => throw null;
+}
+
+partial class C2
+{
+    private partial void Test3<T>(scoped T x, out T z) where T : allows ref struct;
+
+    private partial void Test4(scoped S y, out S z);
+}
+
+partial class C2
+{
+    private partial void Test3<T>(scoped T x, out T z) where T : allows ref struct => throw null;
+
+    private partial void Test4(scoped S y, out S z) => throw null;
+}
+
+
+partial class C3
+{
+    private partial void Test5<T>(T x, out T z) where T : allows ref struct;
+
+    private partial void Test6(S y, out S z);
+}
+
+partial class C3
+{
+    private partial void Test5<T>(scoped T x, out T z) where T : allows ref struct => throw null;
+
+    private partial void Test6(scoped S y, out S z) => throw null;
+}
+
+partial class C4
+{
+    private partial void Test7<T>(T x, out T z) where T : allows ref struct;
+
+    private partial void Test8(S y, out S z);
+}
+
+partial class C4
+{
+    private partial void Test7<T>(T x, out T z) where T : allows ref struct => throw null;
+
+    private partial void Test8(S y, out S z) => throw null;
+}
+
+ref struct S
+{
+}
+";
+
+            var comp = CreateCompilation(src, targetFramework: s_targetFrameworkSupportingByRefLikeGenerics);
+            comp.VerifyDiagnostics(
+                // (11,26): error CS8988: The 'scoped' modifier of parameter 'x' doesn't match partial definition.
+                //     private partial void Test1<T>(T x, out T z) where T : allows ref struct => throw null;
+                Diagnostic(ErrorCode.ERR_ScopedMismatchInParameterOfPartial, "Test1").WithArguments("x").WithLocation(11, 26),
+                // (13,26): error CS8988: The 'scoped' modifier of parameter 'y' doesn't match partial definition.
+                //     private partial void Test2(S y, out S z) => throw null;
+                Diagnostic(ErrorCode.ERR_ScopedMismatchInParameterOfPartial, "Test2").WithArguments("y").WithLocation(13, 26),
+                // (40,26): error CS8988: The 'scoped' modifier of parameter 'x' doesn't match partial definition.
+                //     private partial void Test5<T>(scoped T x, out T z) where T : allows ref struct => throw null;
+                Diagnostic(ErrorCode.ERR_ScopedMismatchInParameterOfPartial, "Test5").WithArguments("x").WithLocation(40, 26),
+                // (42,26): error CS8988: The 'scoped' modifier of parameter 'y' doesn't match partial definition.
+                //     private partial void Test6(scoped S y, out S z) => throw null;
+                Diagnostic(ErrorCode.ERR_ScopedMismatchInParameterOfPartial, "Test6").WithArguments("y").WithLocation(42, 26)
+                );
+        }
+
+        [Fact]
+        [WorkItem("https://github.com/dotnet/roslyn/issues/73554")]
+        public void MissingScopedInDelegateTarget_01()
+        {
+            var src = @"
+class Program
+{
+    static void Test<T>() where T : allows ref struct
+    {
+        DTest1<T> d01 = C1.Test1;
+        DTest2 d02 = C1.Test2;
+        DTest3<T> d03 = C1.Test1;
+        DTest4 d04 = C1.Test2;
+
+        DTest1<T> d11 = C2.Test1;
+        DTest2 d12 = C2.Test2;
+        DTest3<T> d13 = C2.Test1;
+        DTest4 d14 = C2.Test2;
+    }
+}
+
+delegate void DTest1<T>(scoped T x, out T z) where T : allows ref struct;
+
+delegate void DTest2(scoped S y, out S z);
+
+delegate void DTest3<T>(T x, out T z) where T : allows ref struct;
+
+delegate void DTest4(S y, out S z);
+
+class C1
+{
+    public static void Test1<T>(T x, out T z) where T : allows ref struct => throw null;
+
+    public static void Test2(S y, out S z) => throw null;
+}
+
+class C2
+{
+    public static void Test1<T>(scoped T x, out T z) where T : allows ref struct => throw null;
+
+    public static void Test2(scoped S y, out S z) => throw null;
+}
+
+ref struct S
+{
+}
+";
+
+            var comp = CreateCompilation(src, targetFramework: s_targetFrameworkSupportingByRefLikeGenerics);
+            comp.VerifyDiagnostics(
+                // (6,25): error CS8986: The 'scoped' modifier of parameter 'x' doesn't match target 'DTest1<T>'.
+                //         DTest1<T> d01 = C1.Test1;
+                Diagnostic(ErrorCode.ERR_ScopedMismatchInParameterOfTarget, "C1.Test1").WithArguments("x", "DTest1<T>").WithLocation(6, 25),
+                // (7,22): error CS8986: The 'scoped' modifier of parameter 'y' doesn't match target 'DTest2'.
+                //         DTest2 d02 = C1.Test2;
+                Diagnostic(ErrorCode.ERR_ScopedMismatchInParameterOfTarget, "C1.Test2").WithArguments("y", "DTest2").WithLocation(7, 22)
+                );
         }
 
         [Fact(Skip = "https://github.com/dotnet/roslyn/issues/73553")] // Enable once we get support for 'byreflike' in IL.
