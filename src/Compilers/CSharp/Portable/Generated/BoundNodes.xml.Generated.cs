@@ -252,7 +252,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         ExpressionWithNullability,
         WithExpression,
         ConstCastExpression,
-        SelfCallingLambdaCastExpression,
+        SelfCallingLambdaExpression,
     }
 
 
@@ -8819,10 +8819,10 @@ namespace Microsoft.CodeAnalysis.CSharp
         }
     }
 
-    internal sealed partial class BoundSelfCallingLambdaCastExpression : BoundExpression
+    internal sealed partial class BoundSelfCallingLambdaExpression : BoundExpression
     {
-        public BoundSelfCallingLambdaCastExpression(SyntaxNode syntax, BoundBlock blockBody, TypeSymbol? type, bool hasErrors = false)
-            : base(BoundKind.SelfCallingLambdaCastExpression, syntax, type, hasErrors || blockBody.HasErrors())
+        public BoundSelfCallingLambdaExpression(SyntaxNode syntax, BoundBlock blockBody, TypeSymbol? type, bool hasErrors = false)
+            : base(BoundKind.SelfCallingLambdaExpression, syntax, type, hasErrors || blockBody.HasErrors())
         {
 
             RoslynDebug.Assert(blockBody is object, "Field 'blockBody' cannot be null (make the type nullable in BoundNodes.xml to remove this check)");
@@ -8833,13 +8833,13 @@ namespace Microsoft.CodeAnalysis.CSharp
         public BoundBlock BlockBody { get; }
 
         [DebuggerStepThrough]
-        public override BoundNode? Accept(BoundTreeVisitor visitor) => visitor.VisitSelfCallingLambdaCastExpression(this);
+        public override BoundNode? Accept(BoundTreeVisitor visitor) => visitor.VisitSelfCallingLambdaExpression(this);
 
-        public BoundSelfCallingLambdaCastExpression Update(BoundBlock blockBody, TypeSymbol? type)
+        public BoundSelfCallingLambdaExpression Update(BoundBlock blockBody, TypeSymbol? type)
         {
             if (blockBody != this.BlockBody || !TypeSymbol.Equals(type, this.Type, TypeCompareKind.ConsiderEverything))
             {
-                var result = new BoundSelfCallingLambdaCastExpression(this.Syntax, blockBody, type, this.HasErrors);
+                var result = new BoundSelfCallingLambdaExpression(this.Syntax, blockBody, type, this.HasErrors);
                 result.CopyAttributes(this);
                 return result;
             }
@@ -9319,8 +9319,8 @@ namespace Microsoft.CodeAnalysis.CSharp
                     return VisitWithExpression((BoundWithExpression)node, arg);
                 case BoundKind.ConstCastExpression:
                     return VisitConstCastExpression((BoundConstCastExpression)node, arg);
-                case BoundKind.SelfCallingLambdaCastExpression:
-                    return VisitSelfCallingLambdaCastExpression((BoundSelfCallingLambdaCastExpression)node, arg);
+                case BoundKind.SelfCallingLambdaExpression:
+                    return VisitSelfCallingLambdaExpression((BoundSelfCallingLambdaExpression)node, arg);
             }
 
             return default(R)!;
@@ -9561,7 +9561,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         public virtual R VisitExpressionWithNullability(BoundExpressionWithNullability node, A arg) => this.DefaultVisit(node, arg);
         public virtual R VisitWithExpression(BoundWithExpression node, A arg) => this.DefaultVisit(node, arg);
         public virtual R VisitConstCastExpression(BoundConstCastExpression node, A arg) => this.DefaultVisit(node, arg);
-        public virtual R VisitSelfCallingLambdaCastExpression(BoundSelfCallingLambdaCastExpression node, A arg) => this.DefaultVisit(node, arg);
+        public virtual R VisitSelfCallingLambdaExpression(BoundSelfCallingLambdaExpression node, A arg) => this.DefaultVisit(node, arg);
     }
 
     internal abstract partial class BoundTreeVisitor
@@ -9798,7 +9798,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         public virtual BoundNode? VisitExpressionWithNullability(BoundExpressionWithNullability node) => this.DefaultVisit(node);
         public virtual BoundNode? VisitWithExpression(BoundWithExpression node) => this.DefaultVisit(node);
         public virtual BoundNode? VisitConstCastExpression(BoundConstCastExpression node) => this.DefaultVisit(node);
-        public virtual BoundNode? VisitSelfCallingLambdaCastExpression(BoundSelfCallingLambdaCastExpression node) => this.DefaultVisit(node);
+        public virtual BoundNode? VisitSelfCallingLambdaExpression(BoundSelfCallingLambdaExpression node) => this.DefaultVisit(node);
     }
 
     internal abstract partial class BoundTreeWalker : BoundTreeVisitor
@@ -10822,7 +10822,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             this.Visit(node.Expression);
             return null;
         }
-        public override BoundNode? VisitSelfCallingLambdaCastExpression(BoundSelfCallingLambdaCastExpression node)
+        public override BoundNode? VisitSelfCallingLambdaExpression(BoundSelfCallingLambdaExpression node)
         {
             this.Visit(node.BlockBody);
             return null;
@@ -12245,7 +12245,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             TypeSymbol? type = this.VisitType(node.Type);
             return node.Update(expression, type);
         }
-        public override BoundNode? VisitSelfCallingLambdaCastExpression(BoundSelfCallingLambdaCastExpression node)
+        public override BoundNode? VisitSelfCallingLambdaExpression(BoundSelfCallingLambdaExpression node)
         {
             BoundBlock blockBody = (BoundBlock)this.Visit(node.BlockBody);
             TypeSymbol? type = this.VisitType(node.Type);
@@ -14995,10 +14995,10 @@ namespace Microsoft.CodeAnalysis.CSharp
             return updatedNode;
         }
 
-        public override BoundNode? VisitSelfCallingLambdaCastExpression(BoundSelfCallingLambdaCastExpression node)
+        public override BoundNode? VisitSelfCallingLambdaExpression(BoundSelfCallingLambdaExpression node)
         {
             BoundBlock blockBody = (BoundBlock)this.Visit(node.BlockBody);
-            BoundSelfCallingLambdaCastExpression updatedNode;
+            BoundSelfCallingLambdaExpression updatedNode;
 
             if (_updatedNullabilities.TryGetValue(node, out (NullabilityInfo Info, TypeSymbol? Type) infoAndType))
             {
@@ -17177,7 +17177,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             new TreeDumperNode("hasErrors", node.HasErrors, null)
         }
         );
-        public override TreeDumperNode VisitSelfCallingLambdaCastExpression(BoundSelfCallingLambdaCastExpression node, object? arg) => new TreeDumperNode("selfCallingLambdaCastExpression", null, new TreeDumperNode[]
+        public override TreeDumperNode VisitSelfCallingLambdaExpression(BoundSelfCallingLambdaExpression node, object? arg) => new TreeDumperNode("selfCallingLambdaExpression", null, new TreeDumperNode[]
         {
             new TreeDumperNode("blockBody", null, new TreeDumperNode[] { Visit(node.BlockBody, null) }),
             new TreeDumperNode("type", node.Type, null),
