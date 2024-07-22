@@ -2558,4 +2558,8 @@
   <Node Name="BoundConstCastExpression" Base="BoundExpression">
     <Field Name="Expression" Type="BoundExpression"/>
   </Node>
+
+  <Node Name="BoundSelfCallingLambdaCastExpression" Base="BoundExpression">
+    <Field Name="BlockBody" Type="BoundBlock"/>
+  </Node>
 </Tree>

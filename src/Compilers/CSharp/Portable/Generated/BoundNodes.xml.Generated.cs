@@ -252,6 +252,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         ExpressionWithNullability,
         WithExpression,
         ConstCastExpression,
+        SelfCallingLambdaCastExpression,
     }
 
 
@@ -8818,6 +8819,34 @@ namespace Microsoft.CodeAnalysis.CSharp
         }
     }
 
+    internal sealed partial class BoundSelfCallingLambdaCastExpression : BoundExpression
+    {
+        public BoundSelfCallingLambdaCastExpression(SyntaxNode syntax, BoundBlock blockBody, TypeSymbol? type, bool hasErrors = false)
+            : base(BoundKind.SelfCallingLambdaCastExpression, syntax, type, hasErrors || blockBody.HasErrors())
+        {
+
+            RoslynDebug.Assert(blockBody is object, "Field 'blockBody' cannot be null (make the type nullable in BoundNodes.xml to remove this check)");
+
+            this.BlockBody = blockBody;
+        }
+
+        public BoundBlock BlockBody { get; }
+
+        [DebuggerStepThrough]
+        public override BoundNode? Accept(BoundTreeVisitor visitor) => visitor.VisitSelfCallingLambdaCastExpression(this);
+
+        public BoundSelfCallingLambdaCastExpression Update(BoundBlock blockBody, TypeSymbol? type)
+        {
+            if (blockBody != this.BlockBody || !TypeSymbol.Equals(type, this.Type, TypeCompareKind.ConsiderEverything))
+            {
+                var result = new BoundSelfCallingLambdaCastExpression(this.Syntax, blockBody, type, this.HasErrors);
+                result.CopyAttributes(this);
+                return result;
+            }
+            return this;
+        }
+    }
+
     internal abstract partial class BoundTreeVisitor<A, R>
     {
 
@@ -9290,6 +9319,8 @@ namespace Microsoft.CodeAnalysis.CSharp
                     return VisitWithExpression((BoundWithExpression)node, arg);
                 case BoundKind.ConstCastExpression:
                     return VisitConstCastExpression((BoundConstCastExpression)node, arg);
+                case BoundKind.SelfCallingLambdaCastExpression:
+                    return VisitSelfCallingLambdaCastExpression((BoundSelfCallingLambdaCastExpression)node, arg);
             }
 
             return default(R)!;
@@ -9530,6 +9561,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         public virtual R VisitExpressionWithNullability(BoundExpressionWithNullability node, A arg) => this.DefaultVisit(node, arg);
         public virtual R VisitWithExpression(BoundWithExpression node, A arg) => this.DefaultVisit(node, arg);
         public virtual R VisitConstCastExpression(BoundConstCastExpression node, A arg) => this.DefaultVisit(node, arg);
+        public virtual R VisitSelfCallingLambdaCastExpression(BoundSelfCallingLambdaCastExpression node, A arg) => this.DefaultVisit(node, arg);
     }
 
     internal abstract partial class BoundTreeVisitor
@@ -9766,6 +9798,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         public virtual BoundNode? VisitExpressionWithNullability(BoundExpressionWithNullability node) => this.DefaultVisit(node);
         public virtual BoundNode? VisitWithExpression(BoundWithExpression node) => this.DefaultVisit(node);
         public virtual BoundNode? VisitConstCastExpression(BoundConstCastExpression node) => this.DefaultVisit(node);
+        public virtual BoundNode? VisitSelfCallingLambdaCastExpression(BoundSelfCallingLambdaCastExpression node) => this.DefaultVisit(node);
     }
 
     internal abstract partial class BoundTreeWalker : BoundTreeVisitor
@@ -10787,6 +10820,11 @@ namespace Microsoft.CodeAnalysis.CSharp
         public override BoundNode? VisitConstCastExpression(BoundConstCastExpression node)
         {
             this.Visit(node.Expression);
+            return null;
+        }
+        public override BoundNode? VisitSelfCallingLambdaCastExpression(BoundSelfCallingLambdaCastExpression node)
+        {
+            this.Visit(node.BlockBody);
             return null;
         }
     }
@@ -12206,6 +12244,12 @@ namespace Microsoft.CodeAnalysis.CSharp
             BoundExpression expression = (BoundExpression)this.Visit(node.Expression);
             TypeSymbol? type = this.VisitType(node.Type);
             return node.Update(expression, type);
+        }
+        public override BoundNode? VisitSelfCallingLambdaCastExpression(BoundSelfCallingLambdaCastExpression node)
+        {
+            BoundBlock blockBody = (BoundBlock)this.Visit(node.BlockBody);
+            TypeSymbol? type = this.VisitType(node.Type);
+            return node.Update(blockBody, type);
         }
     }
 
@@ -14950,6 +14994,23 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
             return updatedNode;
         }
+
+        public override BoundNode? VisitSelfCallingLambdaCastExpression(BoundSelfCallingLambdaCastExpression node)
+        {
+            BoundBlock blockBody = (BoundBlock)this.Visit(node.BlockBody);
+            BoundSelfCallingLambdaCastExpression updatedNode;
+
+            if (_updatedNullabilities.TryGetValue(node, out (NullabilityInfo Info, TypeSymbol? Type) infoAndType))
+            {
+                updatedNode = node.Update(blockBody, infoAndType.Type);
+                updatedNode.TopLevelNullability = infoAndType.Info;
+            }
+            else
+            {
+                updatedNode = node.Update(blockBody, node.Type);
+            }
+            return updatedNode;
+        }
     }
 
     internal sealed class BoundTreeDumperNodeProducer : BoundTreeVisitor<object?, TreeDumperNode>
@@ -17111,6 +17172,14 @@ namespace Microsoft.CodeAnalysis.CSharp
         public override TreeDumperNode VisitConstCastExpression(BoundConstCastExpression node, object? arg) => new TreeDumperNode("constCastExpression", null, new TreeDumperNode[]
         {
             new TreeDumperNode("expression", null, new TreeDumperNode[] { Visit(node.Expression, null) }),
+            new TreeDumperNode("type", node.Type, null),
+            new TreeDumperNode("isSuppressed", node.IsSuppressed, null),
+            new TreeDumperNode("hasErrors", node.HasErrors, null)
+        }
+        );
+        public override TreeDumperNode VisitSelfCallingLambdaCastExpression(BoundSelfCallingLambdaCastExpression node, object? arg) => new TreeDumperNode("selfCallingLambdaCastExpression", null, new TreeDumperNode[]
+        {
+            new TreeDumperNode("blockBody", null, new TreeDumperNode[] { Visit(node.BlockBody, null) }),
             new TreeDumperNode("type", node.Type, null),
             new TreeDumperNode("isSuppressed", node.IsSuppressed, null),
             new TreeDumperNode("hasErrors", node.HasErrors, null)
