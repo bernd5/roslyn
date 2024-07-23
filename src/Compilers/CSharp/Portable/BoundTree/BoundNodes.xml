@@ -2561,5 +2561,6 @@
 
   <Node Name="BoundSelfCallingLambdaExpression" Base="BoundExpression">
     <Field Name="BlockBody" Type="BoundBlock"/>
+    <Field Name="RefKind" Type="RefKind"/>
   </Node>
 </Tree>

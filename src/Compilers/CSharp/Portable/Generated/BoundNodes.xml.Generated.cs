@@ -8821,25 +8821,27 @@ namespace Microsoft.CodeAnalysis.CSharp
 
     internal sealed partial class BoundSelfCallingLambdaExpression : BoundExpression
     {
-        public BoundSelfCallingLambdaExpression(SyntaxNode syntax, BoundBlock blockBody, TypeSymbol? type, bool hasErrors = false)
+        public BoundSelfCallingLambdaExpression(SyntaxNode syntax, BoundBlock blockBody, RefKind refKind, TypeSymbol? type, bool hasErrors = false)
             : base(BoundKind.SelfCallingLambdaExpression, syntax, type, hasErrors || blockBody.HasErrors())
         {
 
             RoslynDebug.Assert(blockBody is object, "Field 'blockBody' cannot be null (make the type nullable in BoundNodes.xml to remove this check)");
 
             this.BlockBody = blockBody;
+            this.RefKind = refKind;
         }
 
         public BoundBlock BlockBody { get; }
+        public RefKind RefKind { get; }
 
         [DebuggerStepThrough]
         public override BoundNode? Accept(BoundTreeVisitor visitor) => visitor.VisitSelfCallingLambdaExpression(this);
 
-        public BoundSelfCallingLambdaExpression Update(BoundBlock blockBody, TypeSymbol? type)
+        public BoundSelfCallingLambdaExpression Update(BoundBlock blockBody, RefKind refKind, TypeSymbol? type)
         {
-            if (blockBody != this.BlockBody || !TypeSymbol.Equals(type, this.Type, TypeCompareKind.ConsiderEverything))
+            if (blockBody != this.BlockBody || refKind != this.RefKind || !TypeSymbol.Equals(type, this.Type, TypeCompareKind.ConsiderEverything))
             {
-                var result = new BoundSelfCallingLambdaExpression(this.Syntax, blockBody, type, this.HasErrors);
+                var result = new BoundSelfCallingLambdaExpression(this.Syntax, blockBody, refKind, type, this.HasErrors);
                 result.CopyAttributes(this);
                 return result;
             }
@@ -12249,7 +12251,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         {
             BoundBlock blockBody = (BoundBlock)this.Visit(node.BlockBody);
             TypeSymbol? type = this.VisitType(node.Type);
-            return node.Update(blockBody, type);
+            return node.Update(blockBody, node.RefKind, type);
         }
     }
 
@@ -15002,12 +15004,12 @@ namespace Microsoft.CodeAnalysis.CSharp
 
             if (_updatedNullabilities.TryGetValue(node, out (NullabilityInfo Info, TypeSymbol? Type) infoAndType))
             {
-                updatedNode = node.Update(blockBody, infoAndType.Type);
+                updatedNode = node.Update(blockBody, node.RefKind, infoAndType.Type);
                 updatedNode.TopLevelNullability = infoAndType.Info;
             }
             else
             {
-                updatedNode = node.Update(blockBody, node.Type);
+                updatedNode = node.Update(blockBody, node.RefKind, node.Type);
             }
             return updatedNode;
         }
@@ -17180,6 +17182,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         public override TreeDumperNode VisitSelfCallingLambdaExpression(BoundSelfCallingLambdaExpression node, object? arg) => new TreeDumperNode("selfCallingLambdaExpression", null, new TreeDumperNode[]
         {
             new TreeDumperNode("blockBody", null, new TreeDumperNode[] { Visit(node.BlockBody, null) }),
+            new TreeDumperNode("refKind", node.RefKind, null),
             new TreeDumperNode("type", node.Type, null),
             new TreeDumperNode("isSuppressed", node.IsSuppressed, null),
             new TreeDumperNode("hasErrors", node.HasErrors, null)
