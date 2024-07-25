@@ -791,6 +791,10 @@ namespace Microsoft.CodeAnalysis.CSharp
             static RefKind getRefKind(RefKind refKind)
             {
                 Debug.Assert(refKind != RefKind.RefReadOnlyParameter);
+                if (refKind == RefKind.Out)
+                {
+                    return RefKind.Out;
+                }
                 return refKind == RefKind.None ? RefKind.None : RefKind.Ref;
             }
         }
