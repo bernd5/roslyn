@@ -116,22 +116,6 @@ namespace Roslyn.Test.Utilities
 "@
 
 
-Add-TargetFramework "Net20" '$(PkgMicrosoft_NETFramework_ReferenceAssemblies_net20)\build\.NETFramework\v2.0' @(
-  'mscorlib.dll',
-  'System.dll',
-  'Microsoft.VisualBasic.dll')
-
-Add-TargetFramework "Net40" '$(PkgMicrosoft_NETFramework_ReferenceAssemblies_net40)\build\.NETFramework\v4.0' @(
-  'mscorlib.dll',
-  'System.dll',
-  'System.Core.dll',
-  'System.Data.dll',
-  'System.Xml.dll',
-  'System.Xml.Linq.dll',
-  'Microsoft.VisualBasic.dll',
-  'Microsoft.CSharp.dll'
-)
-
 Add-TargetFramework "MicrosoftCSharp" '$(PkgMicrosoft_CSharp)' @(
   'Netstandard10#ref\netstandard1.0\Microsoft.CSharp.dll'
   'Netstandard13Lib#lib\netstandard1.3\Microsoft.CSharp.dll'
@@ -144,10 +128,6 @@ Add-TargetFramework "MicrosoftVisualBasic" '$(PkgMicrosoft_VisualBasic)\ref' @(
 Add-TargetFramework "SystemThreadingTasksExtensions" '$(PkgSystem_Threading_Tasks_Extensions)' @(
   'PortableLib#\lib\portable-net45+win8+wp8+wpa81\System.Threading.Tasks.Extensions.dll',
   'NetStandard20Lib#\lib\netstandard2.0\System.Threading.Tasks.Extensions.dll'
-)
-
-Add-TargetFramework "BuildExtensions" '$(PkgMicrosoft_NET_Build_Extensions)\msbuildExtensions\Microsoft\Microsoft.NET.Build.Extensions' @(
-  'NetStandardToNet461#net461\lib\netstandard.dll'
 )
 
 $targetsContent += @"
