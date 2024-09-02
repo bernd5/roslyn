@@ -4,7 +4,6 @@
 
 #nullable disable
 
-using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using Roslyn.Utilities;
@@ -21,9 +20,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             private readonly AnonymousTypeOrDelegateTemplateSymbol _container;
             private readonly int _ordinal;
             private readonly string _name;
-            private readonly Lazy<bool> _LazyAllowsRefLikeType;
+            private readonly bool _allowsRefLikeType;
 
-            public AnonymousTypeParameterSymbol(AnonymousTypeOrDelegateTemplateSymbol container, int ordinal, string name)
+            public AnonymousTypeParameterSymbol(AnonymousTypeOrDelegateTemplateSymbol container, int ordinal, string name, bool allowsRefLikeType)
             {
                 Debug.Assert((object)container != null);
                 Debug.Assert(!string.IsNullOrEmpty(name));
@@ -31,7 +30,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 _container = container;
                 _ordinal = ordinal;
                 _name = name;
-                _LazyAllowsRefLikeType = new(DoGetAllowsRefLikeType);
+                _allowsRefLikeType = allowsRefLikeType;
             }
 
             public override TypeParameterKind TypeParameterKind
@@ -94,28 +93,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 get { return false; }
             }
 
-            public override bool AllowsRefLikeType
-            {
-                get
-                {
-                    return _LazyAllowsRefLikeType.Value;
-                }
-            }
-
-            private bool DoGetAllowsRefLikeType()
-            {
-                if (_container.IsDelegateType() && ContainingAssembly.RuntimeSupportsByRefLikeGenerics)
-                {
-                    //return false if the type parameter is used as params array
-                    var visitor = new AllowsRefLikeTypeSymbolVisitVisitor()
-                    {
-                        TypeParameter = this.GetPublicSymbol()
-                    };
-                    visitor.Visit(_container.GetMembers("Invoke")[0].GetPublicSymbol());
-                    return visitor.Result;
-                }
-                return false;
-            }
+            public override bool AllowsRefLikeType => _allowsRefLikeType;
 
             public override bool IsValueTypeFromConstraintTypes
             {
