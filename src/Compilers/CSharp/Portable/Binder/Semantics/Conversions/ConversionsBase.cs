@@ -1905,7 +1905,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         public Conversion ClassifyImplicitExtensionMethodThisArgConversion(BoundExpression sourceExpressionOpt, TypeSymbol sourceType, TypeSymbol destination, ref CompoundUseSiteInfo<AssemblySymbol> useSiteInfo)
         {
             Debug.Assert(sourceExpressionOpt is null || Compilation is not null);
-            Debug.Assert(sourceExpressionOpt == null || (object)sourceExpressionOpt.Type == sourceType);
+            Debug.Assert(sourceExpressionOpt == null || TypeSymbol.Equals(sourceExpressionOpt.Type, sourceType));
             Debug.Assert((object)destination != null);
 
             if ((object)sourceType != null)
