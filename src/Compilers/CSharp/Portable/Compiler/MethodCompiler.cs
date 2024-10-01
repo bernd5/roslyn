@@ -2236,7 +2236,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
         }
 
-        private sealed class EmptyRewriter : BoundTreeRewriterWithStackGuard
+        private sealed class EmptyRewriter : BoundTreeRewriterWithStackGuardWithoutRecursionOnTheLeftOfBinaryOperator
         {
         }
 
