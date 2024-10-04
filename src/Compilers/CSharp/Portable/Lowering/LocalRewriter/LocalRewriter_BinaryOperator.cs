@@ -186,7 +186,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             return MakeBinaryOperator(null, syntax, operatorKind, loweredLeft, loweredRight, type, method, constrainedToTypeOpt, isPointerElementAccess, isCompoundAssignment, applyParentUnaryOperator);
         }
 
-        private BoundExpression MakeBinaryOperator(
+        protected virtual BoundExpression MakeBinaryOperator(
             BoundBinaryOperator? oldNode,
             SyntaxNode syntax,
             BinaryOperatorKind operatorKind,
