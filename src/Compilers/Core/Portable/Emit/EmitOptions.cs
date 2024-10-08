@@ -25,6 +25,8 @@ namespace Microsoft.CodeAnalysis.Emit
         /// </summary>
         public bool EmitMetadataOnly { get; private set; }
 
+        internal CodeGenOptions CodeGenOptions { get; private set; }
+
         /// <summary>
         /// Tolerate errors, producing a PE stream and a success result even in the presence of (some) errors. 
         /// </summary>
@@ -509,6 +511,16 @@ namespace Microsoft.CodeAnalysis.Emit
             }
 
             return new EmitOptions(this) { TolerateErrors = value };
+        }
+
+        internal EmitOptions WithCodeGenOptions(CodeGenOptions value)
+        {
+            if (CodeGenOptions == value)
+            {
+                return this;
+            }
+
+            return new EmitOptions(this) { CodeGenOptions = value };
         }
 
         public EmitOptions WithIncludePrivateMembers(bool value)

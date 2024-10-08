@@ -13,6 +13,7 @@ using Microsoft.CodeAnalysis.CodeGen;
 using Microsoft.CodeAnalysis.CSharp.CodeGen;
 using Microsoft.CodeAnalysis.CSharp.Emit;
 using Microsoft.CodeAnalysis.CSharp.Symbols;
+using Microsoft.CodeAnalysis.Emit;
 using Microsoft.CodeAnalysis.PooledObjects;
 using Microsoft.CodeAnalysis.Shared.Collections;
 using Microsoft.CodeAnalysis.Text;
@@ -961,6 +962,8 @@ namespace Microsoft.CodeAnalysis.CSharp
             return new BoundNullCoalescingOperator(Syntax, left, right, leftPlaceholder: null, leftConversion: null, BoundNullCoalescingOperatorResultKind.LeftType, @checked: false, left.Type) { WasCompilerGenerated = true };
         }
 
+        internal CodeGenOptions CodeGenOptions => ModuleBuilderOpt?.EmitOptions.CodeGenOptions ?? default;
+
         public BoundStatement If(BoundExpression condition, BoundStatement thenClause, BoundStatement? elseClauseOpt = null)
         {
             return If(condition, ImmutableArray<LocalSymbol>.Empty, thenClause, elseClauseOpt);
@@ -973,6 +976,14 @@ namespace Microsoft.CodeAnalysis.CSharp
 
         public BoundStatement If(BoundExpression condition, ImmutableArray<LocalSymbol> locals, BoundStatement thenClause, BoundStatement? elseClauseOpt = null)
         {
+            if (CodeGenOptions.AvoidConditionalGoto)
+            {
+                if (locals.Length == 0)
+                {
+                    return new BoundIfStatement(condition.Syntax, condition, thenClause, elseClauseOpt);
+                }
+            }
+
             // We translate
             //    if (condition) thenClause else elseClause
             // as
