@@ -116,17 +116,12 @@ namespace Microsoft.CodeAnalysis.CSharp
             return new BoundStatementList(node.Syntax, builder.ToImmutableAndFree(), node.HasErrors);
         }
 
-        private BoundStatement RewriteIfStatement(
+        private static BoundStatement RewriteIfStatement(
             SyntaxNode syntax,
             BoundExpression rewrittenCondition,
             BoundStatement rewrittenConsequence,
             bool hasErrors)
         {
-            if (_factory.CodeGenOptions.AvoidConditionalGoto)
-            {
-                return new BoundIfStatement(syntax, rewrittenCondition, rewrittenConsequence, null);
-            }
-
             var afterif = new GeneratedLabelSymbol("afterif");
             var builder = ArrayBuilder<BoundStatement>.GetInstance();
 
