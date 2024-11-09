@@ -274,6 +274,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
 
 
+
     internal abstract partial class BoundInitializer : BoundNode
     {
         protected BoundInitializer(BoundKind kind, SyntaxNode syntax, bool hasErrors)
@@ -498,7 +499,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
     internal sealed partial class BoundCapturedReceiverPlaceholder : BoundValuePlaceholderBase
     {
-        public BoundCapturedReceiverPlaceholder(SyntaxNode syntax, BoundExpression receiver, uint localScopeDepth, TypeSymbol? type, bool hasErrors = false)
+        public BoundCapturedReceiverPlaceholder(SyntaxNode syntax, BoundExpression receiver, SafeContext localScopeDepth, TypeSymbol? type, bool hasErrors = false)
             : base(BoundKind.CapturedReceiverPlaceholder, syntax, type, hasErrors || receiver.HasErrors())
         {
 
@@ -509,12 +510,12 @@ namespace Microsoft.CodeAnalysis.CSharp
         }
 
         public BoundExpression Receiver { get; }
-        public uint LocalScopeDepth { get; }
+        public SafeContext LocalScopeDepth { get; }
 
         [DebuggerStepThrough]
         public override BoundNode? Accept(BoundTreeVisitor visitor) => visitor.VisitCapturedReceiverPlaceholder(this);
 
-        public BoundCapturedReceiverPlaceholder Update(BoundExpression receiver, uint localScopeDepth, TypeSymbol? type)
+        public BoundCapturedReceiverPlaceholder Update(BoundExpression receiver, SafeContext localScopeDepth, TypeSymbol? type)
         {
             if (receiver != this.Receiver || localScopeDepth != this.LocalScopeDepth || !TypeSymbol.Equals(type, this.Type, TypeCompareKind.ConsiderEverything))
             {
