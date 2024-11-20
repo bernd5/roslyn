@@ -157,9 +157,22 @@ namespace Microsoft.CodeAnalysis.CSharp
                 }
             }
 
-            var initializations = F.HiddenSequencePoint(F.Block(builder.ToImmutableAndFree()));
+            var initializations = builder.ToImmutableAndFree();
+            if (body.Statements.First() is BoundTypeOrInstanceInitializers bodyOrInitializers)
+            {
+                ImmutableArray<BoundStatement> newInitStatements = [.. initializations, .. bodyOrInitializers.Statements];
+                var newBodyOrInitializers = bodyOrInitializers.Update(newInitStatements);
 
-            return body.Update(body.Locals, body.LocalFunctions, body.HasUnsafeModifier, body.Instrumentation, body.Statements.Insert(index: 0, initializations));
+                ImmutableArray<BoundStatement> statements = [newBodyOrInitializers, .. body.Statements.Skip(1)];
+                return body.Update(body.Locals, body.LocalFunctions, body.HasUnsafeModifier,
+                    body.Instrumentation, statements);
+            }
+            else
+            {
+                var init = new BoundTypeOrInstanceInitializers(body.Syntax, [..initializations]);
+                return body.Update(body.Locals, body.LocalFunctions, body.HasUnsafeModifier, body.Instrumentation,
+                    body.Statements.Insert(index: 0, init));
+            }
         }
 
         private static BoundBlock AppendImplicitReturn(BoundBlock body, MethodSymbol method, bool originalBodyNested)
