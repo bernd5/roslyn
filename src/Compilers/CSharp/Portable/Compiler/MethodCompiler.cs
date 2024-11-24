@@ -1126,7 +1126,14 @@ namespace Microsoft.CodeAnalysis.CSharp
                 BoundBlock flowAnalyzedBody = null;
                 if (body != null)
                 {
-                    flowAnalyzedBody = FlowAnalysisPass.Rewrite(methodSymbol, body, compilationState, diagsForCurrentMethod, hasTrailingExpression: hasTrailingExpression, originalBodyNested: originalBodyNested);
+                    if (_moduleBeingBuiltOpt is { HasCustomOnFlowAnalysisPass: true })
+                    {
+                        flowAnalyzedBody = _moduleBeingBuiltOpt.RaiseOnFlowAnalysisPass(methodSymbol, body, compilationState, diagsForCurrentMethod, hasTrailingExpression: hasTrailingExpression, originalBodyNested: originalBodyNested);
+                    }
+                    else
+                    {
+                        flowAnalyzedBody = FlowAnalysisPass.Rewrite(methodSymbol, body, compilationState, diagsForCurrentMethod, hasTrailingExpression: hasTrailingExpression, originalBodyNested: originalBodyNested);
+                    }
                 }
 
                 bool hasErrors = _hasDeclarationErrors || diagsForCurrentMethod.HasAnyErrors() || processedInitializers.HasErrors;
