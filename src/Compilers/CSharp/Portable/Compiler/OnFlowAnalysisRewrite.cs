@@ -18,7 +18,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Emit
             MethodSymbol Method,
             BoundBlock Block,
             TypeCompilationState CompilationState,
-            BindingDiagnosticBag diagnostics,
+            BindingDiagnosticBag Diagnostics,
             bool HasTrailingExpression,
             bool OriginalBodyNested
         )
