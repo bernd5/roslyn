@@ -182,7 +182,10 @@ namespace Microsoft.CodeAnalysis.Emit
         {
             foreach (var typeDef in GetAnonymousTypeDefinitions(context))
             {
-                yield return typeDef;
+                if (typeDef.GetInternalSymbol()?.ContainingType is null)
+                {
+                    yield return typeDef;
+                }
             }
 
             foreach (var typeDef in GetAdditionalTopLevelTypeDefinitions(context))

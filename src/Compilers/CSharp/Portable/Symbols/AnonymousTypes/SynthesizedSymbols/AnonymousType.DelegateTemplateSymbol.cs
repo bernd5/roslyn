@@ -2,9 +2,11 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Linq;
 using Microsoft.CodeAnalysis.CSharp.Emit;
 using Microsoft.CodeAnalysis.PooledObjects;
 using Roslyn.Utilities;
@@ -16,6 +18,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
         internal sealed class AnonymousDelegateTemplateSymbol : AnonymousTypeOrDelegateTemplateSymbol
         {
             private readonly ImmutableArray<Symbol> _members;
+            private readonly Symbol? _customContainingSymbol;
 
             /// <summary>
             /// True if name of the delegate is indexed by source order (&lt;&gt;f__AnonymousDelegate0, 1, ...)
@@ -188,6 +191,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 var invokeMethod = createInvokeMethod(this, typeDescr.Fields, typeMap);
                 _members = CreateMembers(constructor, invokeMethod);
 
+                _customContainingSymbol = calcContainingType(this, manager);
+
                 static SynthesizedDelegateInvokeMethod createInvokeMethod(
                     AnonymousDelegateTemplateSymbol containingType,
                     ImmutableArray<AnonymousTypeField> fields,
@@ -209,6 +214,54 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                     var method = new SynthesizedDelegateInvokeMethod(containingType, parameters, returnType, returnRefKind);
                     parameters.Free();
                     return method;
+                }
+
+                static Symbol? calcContainingType(AnonymousDelegateTemplateSymbol symbol,
+                    AnonymousTypeManager manager)
+                {
+                    var publicSymbol = symbol.GetPublicSymbol();
+                    var access = publicSymbol.GetMinAccessibility(true);
+                    if (access == Accessibility.Public)
+                    {
+                        return null;
+                    }
+                    return getCustomContainingTypeOfAnonymousDelegate(symbol, manager);
+                }
+
+                static NamedTypeSymbol? getCustomContainingTypeOfAnonymousDelegate(
+                    AnonymousDelegateTemplateSymbol templateSymbol, AnonymousTypeManager manager)
+                {
+                    var access = templateSymbol.GetPublicSymbol().GetMinAccessibility(true);
+                    if (access == Accessibility.Public)
+                    {
+                        return null;
+                    }
+                    var location = templateSymbol.SmallestLocation;
+                    var tree = location.SourceTree!;
+                    var root = tree.GetRoot();
+                    var syntax = root.FindNode(location.SourceSpan);
+                    var containingTypeDeclarationSyntax = syntax.Ancestors().OfType<Syntax.BaseTypeDeclarationSyntax>().FirstOrDefault();
+
+                    if (containingTypeDeclarationSyntax is { })
+                    {
+                        var containingTypeSymbol = manager.Compilation
+                            .GetSemanticModel(tree).GetDeclaredSymbol(containingTypeDeclarationSyntax);
+                        return containingTypeSymbol.GetSymbol();
+                    }
+                    else
+                    {
+                        var globalSt = syntax.Ancestors().OfType<Syntax.GlobalStatementSyntax>().FirstOrDefault();
+                        if (globalSt is { })
+                        {
+                            var entry = manager.Compilation.GetEntryPoint(default)
+                                ?? throw new InvalidOperationException("missing entry point for global statement");
+                            return entry.ContainingType;
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("Unable to detect containing type of anonymous delegate");
+                        }
+                    }
                 }
             }
 
@@ -242,6 +295,8 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             internal override NamedTypeSymbol BaseTypeNoUseSiteDiagnostics => Manager.System_MulticastDelegate;
 
             public override ImmutableArray<TypeParameterSymbol> TypeParameters { get; }
+
+            public override Symbol ContainingSymbol => _customContainingSymbol ?? base.ContainingSymbol;
 
             internal override void AddSynthesizedAttributes(PEModuleBuilder moduleBuilder, ref ArrayBuilder<SynthesizedAttributeData> attributes)
             {

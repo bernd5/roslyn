@@ -132,7 +132,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 return this.GetMembers(name);
             }
 
-            public sealed override Symbol ContainingSymbol
+            public override Symbol ContainingSymbol
             {
                 get { return this.Manager.Compilation.SourceModule.GlobalNamespace; }
             }
