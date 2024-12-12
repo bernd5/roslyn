@@ -146,7 +146,7 @@ internal sealed partial class CSharpMethodExtractor
             var selectedNode = GetFirstStatementOrInitializerSelectedAtCallSite();
 
             // field initializer, constructor initializer, expression bodied member case
-            if (selectedNode is ConstructorInitializerSyntax or FieldDeclarationSyntax ||
+            if (selectedNode is ConstructorInitializerSyntax or FieldDeclarationSyntax or PrimaryConstructorBaseTypeSyntax ||
                 IsExpressionBodiedMember(selectedNode) ||
                 IsExpressionBodiedAccessor(selectedNode))
             {
@@ -178,14 +178,14 @@ internal sealed partial class CSharpMethodExtractor
 
         private SimpleNameSyntax CreateMethodNameForInvocation()
         {
-            return AnalyzerResult.MethodTypeParametersInDeclaration.Count == 0
+            return AnalyzerResult.MethodTypeParametersInDeclaration.IsEmpty
                 ? IdentifierName(_methodName)
                 : GenericName(_methodName, TypeArgumentList(CreateMethodCallTypeVariables()));
         }
 
         private SeparatedSyntaxList<TypeSyntax> CreateMethodCallTypeVariables()
         {
-            Contract.ThrowIfTrue(AnalyzerResult.MethodTypeParametersInDeclaration.Count == 0);
+            Contract.ThrowIfTrue(AnalyzerResult.MethodTypeParametersInDeclaration.IsEmpty);
 
             // propagate any type variable used in extracted code
             return [.. AnalyzerResult.MethodTypeParametersInDeclaration.Select(m => SyntaxFactory.ParseTypeName(m.Name))];
@@ -699,19 +699,6 @@ internal sealed partial class CSharpMethodExtractor
             {
                 return method;
             }
-        }
-
-        protected StatementSyntax GetStatementContainingInvocationToExtractedMethodWorker()
-        {
-            var callSignature = CreateCallSignature();
-
-            if (AnalyzerResult.HasReturnType)
-            {
-                Contract.ThrowIfTrue(AnalyzerResult.HasVariableToUseAsReturnValue);
-                return ReturnStatement(callSignature);
-            }
-
-            return ExpressionStatement(callSignature);
         }
 
         protected override async Task<SemanticDocument> UpdateMethodAfterGenerationAsync(

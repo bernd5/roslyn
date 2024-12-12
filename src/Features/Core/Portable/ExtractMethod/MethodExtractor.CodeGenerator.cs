@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeGeneration;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Editing;
 using Microsoft.CodeAnalysis.LanguageService;
 using Microsoft.CodeAnalysis.PooledObjects;
 using Microsoft.CodeAnalysis.Shared.Extensions;
@@ -166,6 +167,10 @@ internal abstract partial class MethodExtractor<TSelectionResult, TStatementSynt
                 // Find the destination for the new method after the callsite has been fixed up.
                 var mappedMember = insertionPoint.With(documentWithUpdatedCallSite).GetContext();
                 mappedMember = mappedMember.Parent?.RawKind == syntaxKinds.GlobalStatement
+                    ? mappedMember.Parent
+                    : mappedMember;
+
+                mappedMember = mappedMember.RawKind == syntaxKinds.PrimaryConstructorBaseType
                     ? mappedMember.Parent
                     : mappedMember;
 
@@ -335,10 +340,8 @@ internal abstract partial class MethodExtractor<TSelectionResult, TStatementSynt
 
         protected ImmutableArray<ITypeParameterSymbol> CreateMethodTypeParameters()
         {
-            if (AnalyzerResult.MethodTypeParametersInDeclaration.Count == 0)
-            {
+            if (AnalyzerResult.MethodTypeParametersInDeclaration.IsEmpty)
                 return [];
-            }
 
             var set = new HashSet<ITypeParameterSymbol>(AnalyzerResult.MethodTypeParametersInConstraintList);
 
@@ -388,6 +391,20 @@ internal abstract partial class MethodExtractor<TSelectionResult, TStatementSynt
         {
             return parameterBehavior == ParameterBehavior.Ref ? RefKind.Ref :
                         parameterBehavior == ParameterBehavior.Out ? RefKind.Out : RefKind.None;
+        }
+
+        protected TStatementSyntax GetStatementContainingInvocationToExtractedMethodWorker()
+        {
+            var callSignature = CreateCallSignature();
+
+            var generator = this.SemanticDocument.Document.GetRequiredLanguageService<SyntaxGenerator>();
+            if (AnalyzerResult.HasReturnType)
+            {
+                Contract.ThrowIfTrue(AnalyzerResult.HasVariableToUseAsReturnValue);
+                return (TStatementSyntax)generator.ReturnStatement(callSignature);
+            }
+
+            return (TStatementSyntax)generator.ExpressionStatement(callSignature);
         }
     }
 }
