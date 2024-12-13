@@ -11,6 +11,7 @@ using Microsoft.CodeAnalysis.CSharp.CodeStyle;
 using Microsoft.CodeAnalysis.CSharp.Test.Utilities;
 using Microsoft.CodeAnalysis.Editor.UnitTests.CodeActions;
 using Microsoft.CodeAnalysis.Test.Utilities;
+using Microsoft.CodeAnalysis.Testing;
 using Roslyn.Test.Utilities;
 using Xunit;
 
@@ -3302,7 +3303,7 @@ class Program
             {
                 public string? M()
                 {
-                    string? x = {|Rename:NewMethod|}();
+                    string x = {|Rename:NewMethod|}();
 
                     return x;
                 }
@@ -5046,9 +5047,15 @@ $@"
                 Sources = { code },
                 OutputKind = OutputKind.ConsoleApplication,
             },
-            FixedCode = code,
+            FixedCode = """
+            NewMethod();
+            
+            static void NewMethod()
+            {
+                System.Console.WriteLine("string");
+            }
+            """,
             LanguageVersion = LanguageVersion.CSharp9,
-            CodeActionEquivalenceKey = nameof(FeaturesResources.Extract_method),
         }.RunAsync();
     }
 
@@ -5072,9 +5079,21 @@ $@"
                 Sources = { code },
                 OutputKind = OutputKind.ConsoleApplication,
             },
-            FixedCode = code,
+            FixedCode = """
+            System.Console.WriteLine("string");
+
+            int x = NewMethod();
+
+            System.Console.WriteLine(x);
+            
+            static int NewMethod()
+            {
+                int x = int.Parse("0");
+                System.Console.WriteLine(x);
+                return x;
+            }
+            """,
             LanguageVersion = LanguageVersion.CSharp9,
-            CodeActionEquivalenceKey = nameof(FeaturesResources.Extract_method),
         }.RunAsync();
     }
 
@@ -5102,9 +5121,25 @@ $@"
                 Sources = { code },
                 OutputKind = OutputKind.ConsoleApplication,
             },
-            FixedCode = code,
+            FixedCode = """
+                using System;
+            
+                Console.WriteLine("string");
+            
+                int x = NewMethod();
+            
+                Console.WriteLine(x);
+
+                static int NewMethod()
+                {
+                    int x = int.Parse("0");
+                    Console.WriteLine(x);
+                    return x;
+                }
+                
+                class Ignored { }
+                """,
             LanguageVersion = LanguageVersion.CSharp9,
-            CodeActionEquivalenceKey = nameof(FeaturesResources.Extract_method),
         }.RunAsync();
     }
 
@@ -5134,9 +5169,27 @@ $@"
                 Sources = { code },
                 OutputKind = OutputKind.ConsoleApplication,
             },
-            FixedCode = code,
+            FixedCode = """
+            using System;
+
+            Console.WriteLine("string");
+
+            class Ignored { }
+
+            {|CS8803:int x = NewMethod();|}
+
+            Console.WriteLine(x);
+
+            static int NewMethod()
+            {
+                int x = int.Parse("0");
+                Console.WriteLine(x);
+                return x;
+            }
+            
+            class Ignored2 { }
+            """,
             LanguageVersion = LanguageVersion.CSharp9,
-            CodeActionEquivalenceKey = nameof(FeaturesResources.Extract_method),
         }.RunAsync();
     }
 
@@ -5866,6 +5919,101 @@ $@"
             }
             """,
             options: ImplicitTypeEverywhere());
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/61555")]
+    public async Task TestKnownNotNullParameter()
+        => await new VerifyCS.Test
+        {
+            TestCode = """
+                #nullable enable
+
+                public class C
+                {
+                    public void M(C? c)
+                    {
+                        if (c == null)
+                        {
+                            return;
+                        }
+
+                        [|c.ToString();|]
+                    }
+                }
+                """,
+            FixedCode = """
+                #nullable enable
+            
+                public class C
+                {
+                    public void M(C? c)
+                    {
+                        if (c == null)
+                        {
+                            return;
+                        }
+            
+                        NewMethod(c);
+                    }
+
+                    private static void NewMethod(C c)
+                    {
+                        c.ToString();
+                    }
+                }
+                """,
+            LanguageVersion = LanguageVersion.CSharp13,
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net90,
+        }.RunAsync();
+
+    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/61555")]
+    public async Task TestKnownNotNullParameter_AssignedNull()
+        => await new VerifyCS.Test
+        {
+            TestCode = """
+                #nullable enable
+
+                public class C
+                {
+                    public void M(C? c)
+                    {
+                        if (c == null)
+                        {
+                            return;
+                        }
+
+                        [|c.ToString();
+                        c = null;
+                        c?.ToString();|]
+                    }
+                }
+                """,
+            FixedCode = """
+                #nullable enable
+            
+                public class C
+                {
+                    public void M(C? c)
+                    {
+                        if (c == null)
+                        {
+                            return;
+                        }
+            
+                        c = NewMethod(c);
+                    }
+
+                    private static C? NewMethod(C? c)
+                    {
+                        {|CS8602:c|}.ToString();
+                        c = null;
+                        c?.ToString();
+                        return c;
+                    }
+                }
+                """,
+            LanguageVersion = LanguageVersion.CSharp13,
+            ReferenceAssemblies = ReferenceAssemblies.Net.Net90,
+        }.RunAsync();
 
     [Theory, CombinatorialData, WorkItem("https://github.com/dotnet/roslyn/issues/67017")]
     public async Task TestPrimaryConstructorBaseList(bool withBody)
