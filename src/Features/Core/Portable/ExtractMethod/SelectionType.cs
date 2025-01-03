@@ -4,26 +4,9 @@
 
 namespace Microsoft.CodeAnalysis.ExtractMethod;
 
-internal enum DeclarationBehavior
+internal enum SelectionType
 {
-    None,
-    MoveIn,
-    MoveOut,
-    SplitIn,
-    SplitOut
-}
-
-internal enum ReturnBehavior
-{
-    None,
-    Initialization,
-    Assignment
-}
-
-internal enum ParameterBehavior
-{
-    None,
-    Input,
-    Out,
-    Ref
+    Expression,
+    SingleStatement,
+    MultipleStatements,
 }
