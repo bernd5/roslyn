@@ -11,7 +11,6 @@ using Microsoft.CodeAnalysis.ErrorReporting;
 using Microsoft.CodeAnalysis.PooledObjects;
 using Microsoft.CodeAnalysis.Shared.Extensions;
 using Microsoft.CodeAnalysis.Workspaces.Diagnostics;
-using Roslyn.Utilities;
 
 namespace Microsoft.CodeAnalysis.Diagnostics;
 
@@ -25,10 +24,12 @@ internal partial class DiagnosticAnalyzerService
         /// cref="GetDiagnosticsForIdsAsync"/> to speed up subsequent calls through the normal <see
         /// cref="IDiagnosticAnalyzerService"/> entry points as long as the project hasn't changed at all.
         /// </summary>
-        private readonly ConditionalWeakTable<Project, StrongBox<(ImmutableArray<DiagnosticAnalyzer> analyzers, ImmutableDictionary<DiagnosticAnalyzer, DiagnosticAnalysisResult> diagnosticAnalysisResults)>> _projectToForceAnalysisData = new();
+        private static readonly ConditionalWeakTable<Project, StrongBox<(ImmutableArray<DiagnosticAnalyzer> analyzers, ImmutableDictionary<DiagnosticAnalyzer, DiagnosticAnalysisResult> diagnosticAnalysisResults)>> _projectToForceAnalysisData = new();
 
         public async Task<ImmutableArray<DiagnosticData>> ForceAnalyzeProjectAsync(Project project, CancellationToken cancellationToken)
         {
+            var projectState = project.State;
+
             try
             {
                 if (!_projectToForceAnalysisData.TryGetValue(project, out var box))
