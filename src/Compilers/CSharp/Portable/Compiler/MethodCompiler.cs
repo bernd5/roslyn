@@ -760,6 +760,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                         if (_moduleBeingBuiltOpt.HasCustomOnLowerMethod)
                         {
                             if (_moduleBeingBuiltOpt.RaiseOnLowerMethodBody(method,
+                                extensionImplementationMethod: null,
                                 methodOrdinal, methodWithBody.Body,
                                 previousSubmissionFields: null,
                                 compilationState,
@@ -1509,7 +1510,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                 var module = compilationState.ModuleBuilderOpt;
                 if (module.HasCustomOnLowerMethod)
                 {
-                    if (module.RaiseOnLowerMethodBody(method,
+                    if (module.RaiseOnLowerMethodBody(method, extensionImplementationMethod,
                         methodOrdinal, body, previousSubmissionFields, compilationState, instrumentation,
                         debugDocumentProvider, out codeCoverageSpans, diagnostics,
                         ref lazyVariableSlotAllocator, lambdaDebugInfoBuilder,

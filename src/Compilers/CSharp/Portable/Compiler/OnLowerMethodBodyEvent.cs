@@ -20,6 +20,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Emit
         public event OnCustomLower? OnLowerMethodBody;
 
         public record struct LowerEventData(MethodSymbol method,
+            SourceExtensionImplementationMethodSymbol extensionImplementationMethod,
             int methodOrdinal,
             BoundStatement body,
             SynthesizedSubmissionFields previousSubmissionFields,
@@ -42,6 +43,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Emit
 
         public BoundStatement? RaiseOnLowerMethodBody(
             MethodSymbol method,
+            SourceExtensionImplementationMethodSymbol extensionImplementationMethod,
             int methodOrdinal,
             BoundStatement body,
             SynthesizedSubmissionFields previousSubmissionFields,
@@ -62,7 +64,7 @@ namespace Microsoft.CodeAnalysis.CSharp.Emit
             {
                 codeCoverageSpans = default;
                 stateMachineTypeOpt = null;
-                var state = new LowerEventData(method, methodOrdinal, body, previousSubmissionFields,
+                var state = new LowerEventData(method, extensionImplementationMethod, methodOrdinal, body, previousSubmissionFields,
                     compilationState, instrumentation, debugDocumentProvider, codeCoverageSpans, diagnostics,
                     lazyVariableSlotAllocator, lambdaDebugInfoBuilder, lambdaRuntimeRudeEditsBuilder,
                     closureDebugInfoBuilder, stateMachineStateDebugInfoBuilder, stateMachineTypeOpt, isSynthesizedMethod);
