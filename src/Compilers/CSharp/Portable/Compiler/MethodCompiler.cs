@@ -1430,6 +1430,10 @@ namespace Microsoft.CodeAnalysis.CSharp
             {
                 return;
             }
+            if (_moduleBeingBuiltOpt.RaiseOnEmitSkeletonMethodInExtension(methodSymbol))
+            {
+                return;
+            }
 
             ILBuilder builder = new ILBuilder(_moduleBeingBuiltOpt, new LocalSlotManager(slotAllocator: null), OptimizationLevel.Release, areLocalsZeroed: false);
 
