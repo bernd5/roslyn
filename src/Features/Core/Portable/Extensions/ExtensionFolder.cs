@@ -4,15 +4,14 @@
 
 using System;
 using System.Collections.Immutable;
-using System.IO;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.CodeAnalysis.Host;
 using Microsoft.CodeAnalysis.PooledObjects;
 using Roslyn.Utilities;
 
 namespace Microsoft.CodeAnalysis.Extensions;
+
+using HandlerMap = ImmutableDictionary<string, IExtensionMessageHandlerWrapper>;
 
 internal sealed partial class ExtensionMessageHandlerServiceFactory
 {
@@ -28,7 +27,7 @@ internal sealed partial class ExtensionMessageHandlerServiceFactory
             /// <summary>
             /// Lazily computed assembly loader for this particular folder.
             /// </summary>
-            private readonly AsyncLazy<(IAnalyzerAssemblyLoaderInternal? assemblyLoader, Exception? extensionException)> _lazyAssemblyLoader;
+            private readonly AsyncLazy<(IExtensionAssemblyLoader? assemblyLoader, Exception? extensionException)> _lazyAssemblyLoader;
 
             /// <summary>
             /// Mapping from assembly file path to the handlers it contains.  Should only be mutated while the <see
@@ -43,44 +42,8 @@ internal sealed partial class ExtensionMessageHandlerServiceFactory
                 _extensionMessageHandlerService = extensionMessageHandlerService;
                 _lazyAssemblyLoader = AsyncLazy.Create(cancellationToken =>
                 {
-#if NET
-                    // These lines should always succeed.  If they don't, they indicate a bug in our code that we want
-                    // to bubble out as it must be fixed.
-                    var analyzerAssemblyLoaderProvider = _extensionMessageHandlerService._solutionServices.GetRequiredService<IAnalyzerAssemblyLoaderProvider>();
-                    var analyzerAssemblyLoader = analyzerAssemblyLoaderProvider.CreateNewShadowCopyLoader();
-
-                    // Catch exceptions here related to working with the file system.  If we can't properly enumerate,
-                    // we want to report that back to the client, while not blocking the entire extension service.
-                    try
-                    {
-                        // Allow this assembly loader to load any dll in assemblyFolderPath.
-                        foreach (var dll in Directory.EnumerateFiles(assemblyFolderPath, "*.dll"))
-                        {
-                            cancellationToken.ThrowIfCancellationRequested();
-                            try
-                            {
-                                // Check if the file is a valid .NET assembly.
-                                AssemblyName.GetAssemblyName(dll);
-                            }
-                            catch
-                            {
-                                // The file is not a valid .NET assembly, skip it.
-                                continue;
-                            }
-
-                            analyzerAssemblyLoader.AddDependencyLocation(dll);
-                        }
-
-                        return ((IAnalyzerAssemblyLoaderInternal?)analyzerAssemblyLoader, (Exception?)null);
-                    }
-                    catch (Exception ex) when (ex is not OperationCanceledException)
-                    {
-                        // Capture any exceptions here to be reported back in CreateAssemblyHandlersAsync.
-                        return (null, ex);
-                    }
-#else
-                    return ((IAnalyzerAssemblyLoaderInternal?)null, (Exception?)null);
-#endif
+                    var analyzerAssemblyLoaderProvider = _extensionMessageHandlerService._solutionServices.GetRequiredService<IExtensionAssemblyLoaderProvider>();
+                    return analyzerAssemblyLoaderProvider.CreateNewShadowCopyLoader(assemblyFolderPath, cancellationToken);
                 });
             }
 
@@ -88,7 +51,7 @@ internal sealed partial class ExtensionMessageHandlerServiceFactory
             {
                 // Only if we've created the assembly loader do we need to do anything.
                 _lazyAssemblyLoader.TryGetValue(out var tuple);
-                tuple.assemblyLoader?.Dispose();
+                tuple.assemblyLoader?.Unload();
             }
 
             private async Task<AssemblyMessageHandlers> CreateAssemblyHandlersAsync(
@@ -103,14 +66,20 @@ internal sealed partial class ExtensionMessageHandlerServiceFactory
                 if (analyzerAssemblyLoader is null || extensionException is not null)
                 {
                     return new(
-                        DocumentMessageHandlers: ImmutableDictionary<string, IExtensionMessageHandlerWrapper>.Empty,
-                        WorkspaceMessageHandlers: ImmutableDictionary<string, IExtensionMessageHandlerWrapper>.Empty,
+                        DocumentMessageHandlers: HandlerMap.Empty,
+                        WorkspaceMessageHandlers: HandlerMap.Empty,
                         extensionException);
                 }
 
                 var assembly = analyzerAssemblyLoader.LoadFromPath(assemblyFilePath);
-                var factory = _extensionMessageHandlerService._customMessageHandlerFactory;
-                Contract.ThrowIfNull(factory);
+                var factory = _extensionMessageHandlerService._solutionServices.GetService<IExtensionMessageHandlerFactory>();
+                if (factory is null)
+                {
+                    return new(
+                        DocumentMessageHandlers: HandlerMap.Empty,
+                        WorkspaceMessageHandlers: HandlerMap.Empty,
+                        ExtensionException: null);
+                }
 
                 // We're calling into code here to analyze the assembly at the specified file and to create handlers we
                 // find within it.  If this throws, then we will capture that exception and return it to the caller to 
@@ -134,8 +103,8 @@ internal sealed partial class ExtensionMessageHandlerServiceFactory
                     // In the case of an exception, act as if the extension has no handlers to proffer.  Also capture
                     // the exception so it can be reported back to the client.
                     return new(
-                        DocumentMessageHandlers: ImmutableDictionary<string, IExtensionMessageHandlerWrapper>.Empty,
-                        WorkspaceMessageHandlers: ImmutableDictionary<string, IExtensionMessageHandlerWrapper>.Empty,
+                        DocumentMessageHandlers: HandlerMap.Empty,
+                        WorkspaceMessageHandlers: HandlerMap.Empty,
                         ex);
                 }
             }
@@ -149,7 +118,7 @@ internal sealed partial class ExtensionMessageHandlerServiceFactory
                 // If this throws, it also indicated a bug in gladstone that must be fixed.  As such, it is ok if this
                 // tears down the extension service in OOP.
                 if (_assemblyFilePathToHandlers.ContainsKey(assemblyFilePath))
-                    throw new InvalidOperationException($"Extension '{assemblyFilePath}' is already registered.");
+                    throw new InvalidOperationException(string.Format(FeaturesResources.Extension_0_is_already_registered, assemblyFilePath));
 
                 _assemblyFilePathToHandlers = _assemblyFilePathToHandlers.Add(
                    assemblyFilePath,
@@ -158,10 +127,12 @@ internal sealed partial class ExtensionMessageHandlerServiceFactory
             }
 
             /// <summary>
-            /// Unregisters this assembly path from this extension folder.  If this was the last registered path, then this
-            /// will return true so that this folder can be unloaded.
+            /// Unregisters this assembly path from this extension folder.  If this was the last registered path, then
+            /// this will return true so that this folder can be unloaded.  Also returns the lazy handlers for this
+            /// assembly path.  If <see cref="GetExtensionMessageNamesAsync"/> has been called, this will be a fully
+            /// computed value. Otherwise, it will be an uncomputed value.
             /// </summary>
-            public bool UnregisterAssembly(string assemblyFilePath)
+            public (bool removeFolder, AsyncLazy<AssemblyMessageHandlers> lazyHandlers) UnregisterAssembly(string assemblyFilePath)
             {
                 // Must be called under our parent's lock to ensure we see a consistent state of things. This allows us
                 // to safely examine our current state, remove the existing item, and then return if we are now empty.
@@ -169,11 +140,11 @@ internal sealed partial class ExtensionMessageHandlerServiceFactory
 
                 // If this throws, it also indicated a bug in gladstone that must be fixed.  As such, it is ok if this
                 // tears down the extension service in OOP.
-                if (!_assemblyFilePathToHandlers.ContainsKey(assemblyFilePath))
-                    throw new InvalidOperationException($"Extension '{assemblyFilePath}' was not registered.");
+                if (!_assemblyFilePathToHandlers.TryGetValue(assemblyFilePath, out var lazyHandlers))
+                    throw new InvalidOperationException(string.Format(FeaturesResources.Extension_0_was_not_registered, assemblyFilePath));
 
                 _assemblyFilePathToHandlers = _assemblyFilePathToHandlers.Remove(assemblyFilePath);
-                return _assemblyFilePathToHandlers.Count == 0;
+                return (_assemblyFilePathToHandlers.Count == 0, lazyHandlers);
             }
 
             public async ValueTask<ExtensionMessageNames> GetExtensionMessageNamesAsync(string assemblyFilePath, CancellationToken cancellationToken)
@@ -185,7 +156,7 @@ internal sealed partial class ExtensionMessageHandlerServiceFactory
                 // If this throws, it also indicated a bug in gladstone that must be fixed.  As such, it is ok if this
                 // tears down the extension service in OOP.
                 if (!_assemblyFilePathToHandlers.TryGetValue(assemblyFilePath, out var lazyHandlers))
-                    throw new InvalidOperationException($"Extension '{assemblyFilePath}' was not registered.");
+                    throw new InvalidOperationException(string.Format(FeaturesResources.Extension_0_was_not_registered, assemblyFilePath));
 
                 // Handlers already encapsulates any extension-level exceptions that occurred when loading the assembly.
                 // As such, we don't need our own try/catch here.  We can just return the result directly.
@@ -196,19 +167,29 @@ internal sealed partial class ExtensionMessageHandlerServiceFactory
                     ExtensionException: handlers.ExtensionException);
             }
 
-            public async ValueTask AddHandlersAsync(string messageName, bool isSolution, ArrayBuilder<IExtensionMessageHandlerWrapper> result, CancellationToken cancellationToken)
+            public void AddHandlers(
+                string messageName,
+                bool isSolution,
+                ArrayBuilder<IExtensionMessageHandlerWrapper> result,
+                CancellationToken cancellationToken)
             {
                 foreach (var (_, lazyHandler) in _assemblyFilePathToHandlers)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    // Note that if loading the handlers from the assembly failed, then getting this value will still
-                    // succeed. It will just give us back an empty set of handlers, which will effectively be a no-op.
-                    var handlers = await lazyHandler.GetValueAsync(cancellationToken).ConfigureAwait(false);
+                    // Note1: We will only be adding handlers for for the specific messageName we're being asked for.
+                    // However that message name will only be known for extensions we've actually loaded handlers for.
+                    // So we can just synchronously only process lazyHandlers that have values already computed for
+                    // them.  We don't need to compute them here.
 
-                    var specificHandlers = isSolution ? handlers.WorkspaceMessageHandlers : handlers.DocumentMessageHandlers;
-                    if (specificHandlers.TryGetValue(messageName, out var handler))
-                        result.Add(handler);
+                    // Note1 that if loading the handlers from the assembly failed, then getting this value will still
+                    // succeed. It will just give us back an empty set of handlers, which will effectively be a no-op.
+                    if (lazyHandler.TryGetValue(out var handlers))
+                    {
+                        var specificHandlers = isSolution ? handlers.WorkspaceMessageHandlers : handlers.DocumentMessageHandlers;
+                        if (specificHandlers.TryGetValue(messageName, out var handler))
+                            result.Add(handler);
+                    }
                 }
             }
         }
