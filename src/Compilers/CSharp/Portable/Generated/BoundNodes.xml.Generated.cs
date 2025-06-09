@@ -256,25 +256,6 @@ namespace Microsoft.CodeAnalysis.CSharp
         SelfCallingLambdaExpression,
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     internal abstract partial class BoundInitializer : BoundNode
     {
         protected BoundInitializer(BoundKind kind, SyntaxNode syntax, bool hasErrors)
