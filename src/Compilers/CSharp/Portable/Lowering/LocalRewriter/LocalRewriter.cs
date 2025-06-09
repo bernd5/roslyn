@@ -1136,7 +1136,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             return new CompoundUseSiteInfo<AssemblySymbol>(_diagnostics, _compilation.Assembly);
         }
 
-        private BoundExpression ConvertReceiverForExtensionMemberIfNeeded(Symbol member, BoundExpression receiver, bool markAsChecked)
+        internal BoundExpression ConvertReceiverForExtensionMemberIfNeeded(Symbol member, BoundExpression receiver, bool markAsChecked)
         {
             if (member.GetIsNewExtensionMember())
             {
