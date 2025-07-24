@@ -1046,9 +1046,8 @@ public sealed partial class UseExplicitTypeTests(ITestOutputHelper logger)
     }
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/47038")]
-    public async Task NotNullableType_ForeachVarDeconstruction2()
-    {
-        var before = """
+    public Task NotNullableType_ForeachVarDeconstruction2()
+        => TestInRegularAndScriptAsync("""
             #nullable enable
 
             class C
@@ -1067,8 +1066,7 @@ public sealed partial class UseExplicitTypeTests(ITestOutputHelper logger)
                     }
                 }
             }
-            """;
-        var after = """
+            """, """
             #nullable enable
 
             class C
@@ -1087,9 +1085,7 @@ public sealed partial class UseExplicitTypeTests(ITestOutputHelper logger)
                     }
                 }
             }
-            """;
-        await TestInRegularAndScriptAsync(before, after, options: ExplicitTypeEverywhere());
-    }
+            """, new(options: ExplicitTypeEverywhere()));
 
     [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/40477")]
     public async Task NotNullableType_ForeachDeconstruction()
@@ -2657,7 +2653,9 @@ public sealed partial class UseExplicitTypeTests(ITestOutputHelper logger)
             }
             """, new TestParameters(options: ExplicitTypeEverywhere()));
 
-    [Fact, WorkItem("https://github.com/dotnet/roslyn/issues/23907")]
+    [Fact]
+    [WorkItem("https://github.com/dotnet/roslyn/issues/23907")]
+    [WorkItem("https://github.com/dotnet/roslyn/issues/24034")]
     public async Task WithNormalFuncSynthesizedLambdaType()
     {
         var before = """
@@ -2670,11 +2668,13 @@ public sealed partial class UseExplicitTypeTests(ITestOutputHelper logger)
             }
             """;
         var after = """
+            using System;
+
             class Program
             {
                 void Method()
                 {
-                    System.Func<int, string> x = (int i) => i.ToString();
+                    Func<int, string> x = (int i) => i.ToString();
                 }
             }
             """;
