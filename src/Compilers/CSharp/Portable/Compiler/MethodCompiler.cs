@@ -763,53 +763,57 @@ namespace Microsoft.CodeAnalysis.CSharp
                     // In case of async lambdas, which synthesize a state machine type during the following rewrite, the containing method has already been uniquely named,
                     // so there is no need to produce a unique method ordinal for the corresponding state machine type, whose name includes the (unique) containing method name.
                     const int methodOrdinal = -1;
-                    Cci.IMethodBody emittedBody = null;
+                    MethodBody emittedBody = null;
 
                     try
                     {
-                        BoundStatement loweredBody;
-                        StateMachineTypeSymbol stateMachine;
+                        // Local functions can be iterators as well as be async (lambdas can only be async), so we need to lower both iterators and async
+                        IteratorStateMachine iteratorStateMachine;
+                        BoundStatement loweredBody = IteratorRewriter.Rewrite(methodWithBody.Body, method, methodOrdinal, stateMachineStateDebugInfoBuilder, variableSlotAllocatorOpt, compilationState, diagnosticsThisMethod, out iteratorStateMachine);
+                        StateMachineTypeSymbol stateMachine = iteratorStateMachine;
 
-                        if (_moduleBeingBuiltOpt.HasCustomOnLowerMethod)
+                        if (!loweredBody.HasErrors)
                         {
-                            if (_moduleBeingBuiltOpt.RaiseOnLowerMethodBody(method,
-                                extensionImplementationMethod: null,
-                                methodOrdinal, methodWithBody.Body,
-                                previousSubmissionFields: null,
-                                compilationState,
-                                instrumentation: default,
-                                debugDocumentProvider: null, out var codeCoverageSpans,
-                                diagnosticsThisMethod,
-                                ref variableSlotAllocatorOpt,
-                                lambdaDebugInfoBuilder: null,
-                                lambdaRuntimeRudeEditsBuilder: null,
-                                closureDebugInfoBuilder: null,
-                                stateMachineStateDebugInfoBuilder,
-                                out stateMachine,
-                                isSynthesizedMethod: true) is { } l)
-                            {
-                                loweredBody = l;
-                            }
-                            else
-                            {
-                                throw new InvalidOperationException();
-                            }
-                        }
-                        else
-                        {
-                            // Local functions can be iterators as well as be async (lambdas can only be async), so we need to lower both iterators and async
-                            IteratorStateMachine iteratorStateMachine;
-                            loweredBody = IteratorRewriter.Rewrite(methodWithBody.Body, method, methodOrdinal, stateMachineStateDebugInfoBuilder, variableSlotAllocatorOpt, compilationState, diagnosticsThisMethod, out iteratorStateMachine);
-                            stateMachine = iteratorStateMachine;
-
-                            if (!loweredBody.HasErrors)
+                            if (_moduleBeingBuiltOpt.HasCustomOnLowerMethod)
                             {
                                 AsyncStateMachine asyncStateMachine;
                                 loweredBody = AsyncRewriter.Rewrite(loweredBody, method, methodOrdinal, stateMachineStateDebugInfoBuilder, variableSlotAllocatorOpt, compilationState, diagnosticsThisMethod, out asyncStateMachine);
-
-                                Debug.Assert((object)iteratorStateMachine == null || (object)asyncStateMachine == null);
-                                stateMachine = stateMachine ?? asyncStateMachine;
+                                if (_moduleBeingBuiltOpt.RaiseOnLowerMethodBody(method,
+                                    extensionImplementationMethod: null,
+                                    methodOrdinal, methodWithBody.Body,
+                                    previousSubmissionFields: null,
+                                    compilationState,
+                                    instrumentation: default,
+                                    debugDocumentProvider: null, out var codeCoverageSpans,
+                                    diagnosticsThisMethod,
+                                    ref variableSlotAllocatorOpt,
+                                    lambdaDebugInfoBuilder: null,
+                                    lambdaRuntimeRudeEditsBuilder: null,
+                                    closureDebugInfoBuilder: null,
+                                    stateMachineStateDebugInfoBuilder,
+                                    out stateMachine,
+                                    isSynthesizedMethod: true) is { } l)
+                                {
+                                    loweredBody = l;
+                                }
+                                else
+                                {
+                                    throw new InvalidOperationException();
+                                }
                             }
+
+                            AsyncStateMachine asyncStateMachine = null;
+                            if (compilationState.Compilation.IsRuntimeAsyncEnabledIn(method))
+                            {
+                                loweredBody = RuntimeAsyncRewriter.Rewrite(loweredBody, method, compilationState, diagnosticsThisMethod);
+                            }
+                            else
+                            {
+                                loweredBody = AsyncRewriter.Rewrite(loweredBody, method, methodOrdinal, stateMachineStateDebugInfoBuilder, variableSlotAllocatorOpt, compilationState, diagnosticsThisMethod, out asyncStateMachine);
+                            }
+
+                            Debug.Assert((object)iteratorStateMachine == null || (object)asyncStateMachine == null);
+                            stateMachine = stateMachine ?? asyncStateMachine;
                         }
 
                         SetGlobalErrorIfTrue(diagnosticsThisMethod.HasAnyErrors());
@@ -1633,10 +1637,19 @@ namespace Microsoft.CodeAnalysis.CSharp
                     return bodyWithoutIterators;
                 }
 
-                BoundStatement bodyWithoutAsync = AsyncRewriter.Rewrite(bodyWithoutIterators, method, methodOrdinal, stateMachineStateDebugInfoBuilder, lazyVariableSlotAllocator, compilationState, diagnostics,
-                    out AsyncStateMachine asyncStateMachine);
+                BoundStatement bodyWithoutAsync;
+                AsyncStateMachine asyncStateMachine = null;
+                if (compilationState.Compilation.IsRuntimeAsyncEnabledIn(method))
+                {
+                    bodyWithoutAsync = RuntimeAsyncRewriter.Rewrite(bodyWithoutIterators, method, compilationState, diagnostics);
+                }
+                else
+                {
+                    bodyWithoutAsync = AsyncRewriter.Rewrite(bodyWithoutIterators, method, methodOrdinal, stateMachineStateDebugInfoBuilder, lazyVariableSlotAllocator, compilationState, diagnostics,
+                       out asyncStateMachine);
+                }
 
-                Debug.Assert((object)iteratorStateMachine == null || (object)asyncStateMachine == null);
+                Debug.Assert(iteratorStateMachine is null || asyncStateMachine is null);
                 stateMachineTypeOpt = (StateMachineTypeSymbol)iteratorStateMachine ?? asyncStateMachine;
 
                 return bodyWithoutAsync;
