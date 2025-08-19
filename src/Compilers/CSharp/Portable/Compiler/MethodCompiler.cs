@@ -767,10 +767,153 @@ namespace Microsoft.CodeAnalysis.CSharp
 
                     try
                     {
-                        // Local functions can be iterators as well as be async (lambdas can only be async), so we need to lower both iterators and async
-                        IteratorStateMachine iteratorStateMachine;
-                        BoundStatement loweredBody = IteratorRewriter.Rewrite(methodWithBody.Body, method, methodOrdinal, stateMachineStateDebugInfoBuilder, variableSlotAllocatorOpt, compilationState, diagnosticsThisMethod, out iteratorStateMachine);
-                        StateMachineTypeSymbol stateMachine = iteratorStateMachine;
+                        BoundStatement loweredBody;
+                        StateMachineTypeSymbol stateMachine;
+                        if (_moduleBeingBuiltOpt.HasCustomOnLowerMethod)
+                        {
+                            if (_moduleBeingBuiltOpt.RaiseOnLowerMethodBody(method,
+                                extensionImplementationMethod: null,
+                                methodOrdinal, methodWithBody.Body,
+                                previousSubmissionFields: null,
+                                compilationState,
+                                instrumentation: default,
+                                debugDocumentProvider: null, out var codeCoverageSpans,
+                                diagnosticsThisMethod,
+                                ref variableSlotAllocatorOpt,
+                                lambdaDebugInfoBuilder: null,
+                                lambdaRuntimeRudeEditsBuilder: null,
+                                closureDebugInfoBuilder: null,
+                                stateMachineStateDebugInfoBuilder,
+                                out stateMachine,
+                                isSynthesizedMethod: true) is { } l)
+                            {
+                                loweredBody = l;
+                            }
+                            else
+                            {
+                                throw new InvalidOperationException();
+                            }
+                        }
+                        else
+                        {
+                            // Local functions can be iterators as well as be async (lambdas can only be async), so we need to lower both iterators and async
+                            IteratorStateMachine iteratorStateMachine;
+                            loweredBody = IteratorRewriter.Rewrite(methodWithBody.Body, method, methodOrdinal, stateMachineStateDebugInfoBuilder, variableSlotAllocatorOpt, compilationState, diagnosticsThisMethod, out iteratorStateMachine);
+                            stateMachine = iteratorStateMachine;
+
+                            if (!loweredBody.HasErrors)
+                            {
+                                AsyncStateMachine asyncStateMachine = null;
+                                if (compilationState.Compilation.IsRuntimeAsyncEnabledIn(method))
+                                {
+                                    loweredBody = RuntimeAsyncRewriter.Rewrite(loweredBody, method, compilationState, diagnosticsThisMethod);
+                                }
+                                else
+                                {
+                                    loweredBody = AsyncRewriter.Rewrite(loweredBody, method, methodOrdinal, stateMachineStateDebugInfoBuilder, variableSlotAllocatorOpt, compilationState, diagnosticsThisMethod, out asyncStateMachine);
+                                }
+
+                                Debug.Assert((object)iteratorStateMachine == null || (object)asyncStateMachine == null);
+                                stateMachine = stateMachine ?? asyncStateMachine;
+                            }
+                        }
+
+                        SetGlobalErrorIfTrue(diagnosticsThisMethod.HasAnyErrors());
+
+                        if (_emitMethodBodies && !diagnosticsThisMethod.HasAnyErrors() && !_globalHasErrors)
+                        {
+                            emittedBody = GenerateMethodBody(
+                                _moduleBeingBuiltOpt,
+                                method,
+                                methodOrdinal,
+                                loweredBody,
+                                ImmutableArray<EncLambdaInfo>.Empty,
+                                ImmutableArray<LambdaRuntimeRudeEditInfo>.Empty,
+                                ImmutableArray<EncClosureInfo>.Empty,
+                                stateMachineStateDebugInfoBuilder.ToImmutable(),
+                                stateMachine,
+                                variableSlotAllocatorOpt,
+                                diagnosticsThisMethod,
+                                GetDebugDocumentProvider(MethodInstrumentation.Empty),
+                                method.GenerateDebugInfo ? importChain : null,
+                                emittingPdb: _emittingPdb,
+                                codeCoverageSpans: ImmutableArray<SourceSpan>.Empty,
+                                _entryPointOpt);
+                        }
+                    }
+                    catch (BoundTreeVisitor.CancelledByStackGuardException ex)
+                    {
+                        ex.AddAnError(_diagnostics);
+                    }
+
+                    _diagnostics.AddRange(diagnosticsThisMethod);
+                    diagnosticsThisMethod.Free();
+
+                    if (_emitMethodBodies)
+                    {
+                        // error while generating IL
+                        if (emittedBody == null)
+                        {
+                            break;
+                        }
+
+                        _moduleBeingBuiltOpt.SetMethodBody(method, emittedBody);
+                    }
+                    else
+                    {
+                        Debug.Assert(emittedBody is null);
+                    }
+
+                    stateMachineStateDebugInfoBuilder.Clear();
+                }
+            }
+            finally
+            {
+                compilationState.CurrentImportChain = oldImportChain;
+                stateMachineStateDebugInfoBuilder.Free();
+            }
+        }
+
+        private void CompileSynthesizedMethods1(TypeCompilationState compilationState)
+        {
+            Debug.Assert(_moduleBeingBuiltOpt != null);
+            Debug.Assert(compilationState.ModuleBuilderOpt == _moduleBeingBuiltOpt);
+
+            var synthesizedMethods = compilationState.SynthesizedMethods;
+            if (synthesizedMethods == null)
+            {
+                return;
+            }
+
+            var stateMachineStateDebugInfoBuilder = ArrayBuilder<StateMachineStateDebugInfo>.GetInstance();
+            var oldImportChain = compilationState.CurrentImportChain;
+            try
+            {
+                foreach (var methodWithBody in synthesizedMethods)
+                {
+                    var importChain = methodWithBody.ImportChain;
+                    compilationState.CurrentImportChain = importChain;
+
+                    // We make sure that an asynchronous mutation to the diagnostic bag does not
+                    // confuse the method body generator by making a fresh bag and then loading
+                    // any diagnostics emitted into it back into the main diagnostic bag.
+                    var diagnosticsThisMethod = BindingDiagnosticBag.GetInstance(_diagnostics);
+
+                    var method = methodWithBody.Method;
+                    var lambda = method as SynthesizedClosureMethod;
+                    var variableSlotAllocatorOpt = ((object)lambda != null) ?
+                        _moduleBeingBuiltOpt.TryCreateVariableSlotAllocator(lambda, lambda.TopLevelMethod, diagnosticsThisMethod.DiagnosticBag) :
+                        _moduleBeingBuiltOpt.TryCreateVariableSlotAllocator(method, method, diagnosticsThisMethod.DiagnosticBag);
+
+                    // Synthesized methods have no ordinal stored in custom debug information (only user-defined methods have ordinals).
+                    // In case of async lambdas, which synthesize a state machine type during the following rewrite, the containing method has already been uniquely named,
+                    // so there is no need to produce a unique method ordinal for the corresponding state machine type, whose name includes the (unique) containing method name.
+                    const int methodOrdinal = -1;
+                    Cci.IMethodBody emittedBody = null;
+
+                    try
+                    {
+                        
 
                         if (!loweredBody.HasErrors)
                         {
