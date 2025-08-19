@@ -763,7 +763,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                     // In case of async lambdas, which synthesize a state machine type during the following rewrite, the containing method has already been uniquely named,
                     // so there is no need to produce a unique method ordinal for the corresponding state machine type, whose name includes the (unique) containing method name.
                     const int methodOrdinal = -1;
-                    MethodBody emittedBody = null;
+                    Cci.IMethodBody emittedBody = null;
 
                     try
                     {
@@ -776,8 +776,6 @@ namespace Microsoft.CodeAnalysis.CSharp
                         {
                             if (_moduleBeingBuiltOpt.HasCustomOnLowerMethod)
                             {
-                                AsyncStateMachine asyncStateMachine;
-                                loweredBody = AsyncRewriter.Rewrite(loweredBody, method, methodOrdinal, stateMachineStateDebugInfoBuilder, variableSlotAllocatorOpt, compilationState, diagnosticsThisMethod, out asyncStateMachine);
                                 if (_moduleBeingBuiltOpt.RaiseOnLowerMethodBody(method,
                                     extensionImplementationMethod: null,
                                     methodOrdinal, methodWithBody.Body,
