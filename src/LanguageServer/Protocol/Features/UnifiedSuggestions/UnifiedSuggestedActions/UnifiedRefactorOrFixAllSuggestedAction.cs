@@ -2,21 +2,25 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System.Collections.Immutable;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixesAndRefactorings;
-using Microsoft.CodeAnalysis.UnifiedSuggestions.UnifiedSuggestedActions;
+using Microsoft.CodeAnalysis.CodeRefactorings;
 
 namespace Microsoft.CodeAnalysis.UnifiedSuggestions;
 
 /// <summary>
-/// Similar to FixAllCodeRefactoringSuggestedAction, but in a location that can be used by
+/// Similar to FixAllCodeFixSuggestedAction, but in a location that can be used by
 /// both local Roslyn and LSP.
 /// </summary>
-internal sealed class UnifiedRefactorAllCodeRefactoringSuggestedAction(
+internal sealed class UnifiedRefactorOrFixAllSuggestedAction(
     CodeAction codeAction,
     CodeActionPriority codeActionPriority,
-    IRefactorOrFixAllState fixAllState)
-    : UnifiedSuggestedAction(codeAction, codeActionPriority), IRefactorAllCodeRefactoringSuggestedAction
+    IRefactorOrFixAllState fixAllState,
+    object provider,
+    CodeRefactoringKind? codeRefactoringKind,
+    ImmutableArray<Diagnostic> diagnostics)
+    : UnifiedSuggestedAction(codeAction, codeActionPriority, provider, codeRefactoringKind, diagnostics)
 {
     public IRefactorOrFixAllState FixAllState { get; } = fixAllState;
 }

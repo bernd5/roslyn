@@ -12,6 +12,8 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis.CodeActions;
+using Microsoft.CodeAnalysis.CodeFixes;
+using Microsoft.CodeAnalysis.CodeRefactorings;
 using Microsoft.CodeAnalysis.Editor.Shared;
 using Microsoft.CodeAnalysis.Editor.Shared.Extensions;
 using Microsoft.CodeAnalysis.Editor.Shared.Options;
@@ -19,6 +21,7 @@ using Microsoft.CodeAnalysis.Host;
 using Microsoft.CodeAnalysis.Internal.Log;
 using Microsoft.CodeAnalysis.PooledObjects;
 using Microsoft.CodeAnalysis.Remote;
+using Microsoft.CodeAnalysis.Shared.Extensions;
 using Microsoft.CodeAnalysis.Telemetry;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.CodeAnalysis.Text.Shared.Extensions;
@@ -281,26 +284,22 @@ internal sealed partial class SuggestedActionsSourceProvider
                     ConvertToSuggestedActionSetPriority(unifiedSuggestedActionSet.Priority),
                     unifiedSuggestedActionSet.ApplicableToSpan?.ToSpan());
 
-                ISuggestedAction ConvertToSuggestedAction(IUnifiedSuggestedAction unifiedSuggestedAction)
+                ISuggestedAction ConvertToSuggestedAction(UnifiedSuggestedAction unifiedSuggestedAction)
                     => unifiedSuggestedAction switch
                     {
-                        UnifiedCodeFixSuggestedAction codeFixAction => new CodeFixSuggestedAction(
+                        UnifiedSuggestedActionWithNestedFlavors codeFixAction => new SuggestedActionWithNestedFlavors(
                             _threadingContext, owner, originalDocument, subjectBuffer,
-                            codeFixAction.CodeFix, codeFixAction.Provider, codeFixAction.OriginalCodeAction,
-                            ConvertToSuggestedActionSet(codeFixAction.FixAllFlavors, originalDocument)),
-                        UnifiedCodeRefactoringSuggestedAction codeRefactoringAction => new CodeRefactoringSuggestedAction(
-                            _threadingContext, owner, originalDocument, subjectBuffer,
-                            codeRefactoringAction.CodeRefactoringProvider, codeRefactoringAction.OriginalCodeAction,
-                            ConvertToSuggestedActionSet(codeRefactoringAction.FixAllFlavors, originalDocument)),
-                        UnifiedFixAllCodeFixSuggestedAction fixAllAction => new FixAllCodeFixSuggestedAction(
-                            _threadingContext, owner, originalSolution, subjectBuffer,
-                            fixAllAction.FixAllState, fixAllAction.Diagnostic, fixAllAction.OriginalCodeAction),
-                        UnifiedRefactorAllCodeRefactoringSuggestedAction fixAllCodeRefactoringAction => new RefactorAllCodeRefactoringSuggestedAction(
-                            _threadingContext, owner, originalSolution, subjectBuffer,
-                            fixAllCodeRefactoringAction.FixAllState, fixAllCodeRefactoringAction.OriginalCodeAction),
+                            codeFixAction.Provider, codeFixAction.OriginalCodeAction,
+                            ConvertToSuggestedActionSet(codeFixAction.FixAllFlavors, originalDocument),
+                            codeFixAction.Diagnostics.FirstOrDefault()),
+                        UnifiedRefactorOrFixAllSuggestedAction refactorOrFixAllAction
+                            => new RefactorOrFixAllSuggestedAction(
+                                _threadingContext, owner, originalSolution, subjectBuffer,
+                                refactorOrFixAllAction.FixAllState, refactorOrFixAllAction.OriginalCodeAction,
+                                refactorOrFixAllAction.Diagnostics.FirstOrDefault()?.GetTelemetryDiagnosticID()),
                         UnifiedSuggestedActionWithNestedActions nestedAction => new SuggestedActionWithNestedActions(
                             _threadingContext, owner, originalSolution, subjectBuffer,
-                            nestedAction.Provider ?? this, nestedAction.OriginalCodeAction,
+                            nestedAction.Provider, nestedAction.OriginalCodeAction,
                             nestedAction.NestedActionSets.SelectAsArray(s => ConvertToSuggestedActionSet(s, originalDocument))),
                         _ => throw ExceptionUtilities.Unreachable()
                     };
