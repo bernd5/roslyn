@@ -821,6 +821,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                         }
 
                         SetGlobalErrorIfTrue(diagnosticsThisMethod.HasAnyErrors());
+                        PipelinePhaseValidator.AssertAfterStateMachineRewriting(loweredBody);
 
                         if (_emitMethodBodies && !diagnosticsThisMethod.HasAnyErrors() && !_globalHasErrors)
                         {
@@ -1540,6 +1541,8 @@ namespace Microsoft.CodeAnalysis.CSharp
                 return body;
             }
 
+            PipelinePhaseValidator.AssertAfterInitialBinding(body);
+
             try
             {
                 var module = compilationState.ModuleBuilderOpt;
@@ -1640,6 +1643,8 @@ namespace Microsoft.CodeAnalysis.CSharp
                     return bodyWithoutLambdas;
                 }
 
+                PipelinePhaseValidator.AssertAfterClosureConversion(bodyWithoutLambdas);
+
                 BoundStatement bodyWithoutIterators = IteratorRewriter.Rewrite(bodyWithoutLambdas, method, methodOrdinal, stateMachineStateDebugInfoBuilder, lazyVariableSlotAllocator, compilationState, diagnostics,
                     out IteratorStateMachine iteratorStateMachine);
 
@@ -1662,6 +1667,8 @@ namespace Microsoft.CodeAnalysis.CSharp
 
                 Debug.Assert(iteratorStateMachine is null || asyncStateMachine is null);
                 stateMachineTypeOpt = (StateMachineTypeSymbol)iteratorStateMachine ?? asyncStateMachine;
+
+                PipelinePhaseValidator.AssertAfterStateMachineRewriting(bodyWithoutAsync);
 
                 return bodyWithoutAsync;
             }
