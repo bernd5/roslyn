@@ -818,10 +818,10 @@ namespace Microsoft.CodeAnalysis.CSharp
                                 Debug.Assert((object)iteratorStateMachine == null || (object)asyncStateMachine == null);
                                 stateMachine = stateMachine ?? asyncStateMachine;
                             }
+                            PipelinePhaseValidator.AssertAfterStateMachineRewriting(loweredBody);
                         }
 
                         SetGlobalErrorIfTrue(diagnosticsThisMethod.HasAnyErrors());
-                        PipelinePhaseValidator.AssertAfterStateMachineRewriting(loweredBody);
 
                         if (_emitMethodBodies && !diagnosticsThisMethod.HasAnyErrors() && !_globalHasErrors)
                         {
