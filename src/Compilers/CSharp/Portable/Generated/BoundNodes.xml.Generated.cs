@@ -17468,8 +17468,18 @@ namespace Microsoft.CodeAnalysis.CSharp
 #if DEBUG
     internal sealed partial class PipelinePhaseValidator
     {
+        public static event Func<BoundKind, PipelinePhase?>? OnGetCustomDoesNotSurvive;
+
         internal static PipelinePhase DoesNotSurvive(BoundKind kind)
         {
+            if (OnGetCustomDoesNotSurvive is { } s)
+            {
+                if (s(kind) is { } r)
+                {
+                    return r;
+                }
+            }
+
             return kind switch
             {
                 BoundKind.ValuePlaceholder => PipelinePhase.LocalRewriting,
