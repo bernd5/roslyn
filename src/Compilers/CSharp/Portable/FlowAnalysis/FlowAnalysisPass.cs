@@ -161,7 +161,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
 
             var initializations = builder.ToImmutableAndFree();
-            if (body.Statements.First() is BoundTypeOrInstanceInitializers bodyOrInitializers)
+            if (body.Statements.FirstOrDefault() is BoundTypeOrInstanceInitializers bodyOrInitializers)
             {
                 ImmutableArray<BoundStatement> newInitStatements = [.. initializations, .. bodyOrInitializers.Statements];
                 var newBodyOrInitializers = bodyOrInitializers.Update(newInitStatements);
@@ -172,7 +172,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
             else
             {
-                var init = new BoundTypeOrInstanceInitializers(body.Syntax, [..initializations]);
+                var init = new BoundTypeOrInstanceInitializers(body.Syntax, [.. initializations]);
                 return body.Update(body.Locals, body.LocalFunctions, body.HasUnsafeModifier, body.Instrumentation,
                     body.Statements.Insert(index: 0, init));
             }
