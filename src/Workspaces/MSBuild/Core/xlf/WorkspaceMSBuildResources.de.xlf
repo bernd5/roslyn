@@ -79,7 +79,7 @@
       </trans-unit>
       <trans-unit id="Unable_to_find_0">
         <source>Unable to find '{0}'</source>
-        <target state="translated">"{0}" nicht gefunden</target>
+        <target state="translated">"{0}" wurde nicht gefunden</target>
         <note />
       </trans-unit>
       <trans-unit id="Unable_to_find_a_0_for_1">
