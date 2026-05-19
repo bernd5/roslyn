@@ -1476,6 +1476,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
             builder.EmitThrow(isRethrow: false);
             builder.Realize();
+            builder.FreeBasicBlocks();
 
             _moduleBeingBuiltOpt.TestData?.SetMethodILBuilder(methodSymbol, builder);
 
