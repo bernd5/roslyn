@@ -812,7 +812,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                                 AsyncStateMachine asyncStateMachine = null;
                                 if (compilationState.Compilation.IsRuntimeAsyncEnabledIn(method))
                                 {
-                                loweredBody = RuntimeAsyncRewriter.Rewrite(loweredBody, method, compilationState, methodOrdinal, diagnosticsThisMethod);
+                                    loweredBody = RuntimeAsyncRewriter.Rewrite(loweredBody, method, compilationState, methodOrdinal, diagnosticsThisMethod);
                                 }
                                 else
                                 {
