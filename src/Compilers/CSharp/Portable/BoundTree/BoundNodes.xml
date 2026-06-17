@@ -2696,8 +2696,4 @@
     <Field Name="BlockBody" Type="BoundBlock"/>
     <Field Name="RefKind" Type="RefKind"/>
   </Node>
-  
-  <Node Name="BoundUnsafeExpression" Base="BoundExpression">
-    <Field Name="Expression" Type="BoundExpression"/>
-  </Node>
 </Tree>
