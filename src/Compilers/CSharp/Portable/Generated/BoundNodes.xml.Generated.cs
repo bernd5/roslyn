@@ -259,6 +259,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         WithExpression,
         ConstCastExpression,
         SelfCallingLambdaExpression,
+        UnsafeExpression,
     }
 
     internal abstract partial class BoundInitializer : BoundNode
@@ -9144,6 +9145,34 @@ namespace Microsoft.CodeAnalysis.CSharp
         }
     }
 
+    internal sealed partial class BoundUnsafeExpression : BoundExpression
+    {
+        public BoundUnsafeExpression(SyntaxNode syntax, BoundExpression expression, TypeSymbol? type, bool hasErrors = false)
+            : base(BoundKind.UnsafeExpression, syntax, type, hasErrors || expression.HasErrors())
+        {
+
+            RoslynDebug.Assert(expression is object, "Field 'expression' cannot be null (make the type nullable in BoundNodes.xml to remove this check)");
+
+            this.Expression = expression;
+        }
+
+        public BoundExpression Expression { get; }
+
+        [DebuggerStepThrough]
+        public override BoundNode? Accept(BoundTreeVisitor visitor) => visitor.VisitUnsafeExpression(this);
+
+        public BoundUnsafeExpression Update(BoundExpression expression, TypeSymbol? type)
+        {
+            if (expression != this.Expression || !TypeSymbol.Equals(type, this.Type, TypeCompareKind.ConsiderEverything))
+            {
+                var result = new BoundUnsafeExpression(this.Syntax, expression, type, this.HasErrors);
+                result.CopyAttributes(this);
+                return result;
+            }
+            return this;
+        }
+    }
+
     internal abstract partial class BoundTreeVisitor<A, R>
     {
 
@@ -9630,6 +9659,8 @@ namespace Microsoft.CodeAnalysis.CSharp
                     return VisitConstCastExpression((BoundConstCastExpression)node, arg);
                 case BoundKind.SelfCallingLambdaExpression:
                     return VisitSelfCallingLambdaExpression((BoundSelfCallingLambdaExpression)node, arg);
+                case BoundKind.UnsafeExpression:
+                    return VisitUnsafeExpression((BoundUnsafeExpression)node, arg);
             }
 
             return default(R)!;
@@ -9877,6 +9908,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         public virtual R VisitWithExpression(BoundWithExpression node, A arg) => this.DefaultVisit(node, arg);
         public virtual R VisitConstCastExpression(BoundConstCastExpression node, A arg) => this.DefaultVisit(node, arg);
         public virtual R VisitSelfCallingLambdaExpression(BoundSelfCallingLambdaExpression node, A arg) => this.DefaultVisit(node, arg);
+        public virtual R VisitUnsafeExpression(BoundUnsafeExpression node, A arg) => this.DefaultVisit(node, arg);
     }
 
     internal abstract partial class BoundTreeVisitor
@@ -10120,6 +10152,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         public virtual BoundNode? VisitWithExpression(BoundWithExpression node) => this.DefaultVisit(node);
         public virtual BoundNode? VisitConstCastExpression(BoundConstCastExpression node) => this.DefaultVisit(node);
         public virtual BoundNode? VisitSelfCallingLambdaExpression(BoundSelfCallingLambdaExpression node) => this.DefaultVisit(node);
+        public virtual BoundNode? VisitUnsafeExpression(BoundUnsafeExpression node) => this.DefaultVisit(node);
     }
 
     internal abstract partial class BoundTreeWalker : BoundTreeVisitor
@@ -11177,6 +11210,11 @@ namespace Microsoft.CodeAnalysis.CSharp
         public override BoundNode? VisitSelfCallingLambdaExpression(BoundSelfCallingLambdaExpression node)
         {
             this.Visit(node.BlockBody);
+            return null;
+        }
+        public override BoundNode? VisitUnsafeExpression(BoundUnsafeExpression node)
+        {
+            this.Visit(node.Expression);
             return null;
         }
     }
@@ -12790,6 +12828,12 @@ namespace Microsoft.CodeAnalysis.CSharp
             BoundBlock blockBody = (BoundBlock)this.Visit(node.BlockBody);
             TypeSymbol? type = this.VisitType(node.Type);
             return node.Update(blockBody, node.RefKind, type);
+        }
+        public override BoundNode? VisitUnsafeExpression(BoundUnsafeExpression node)
+        {
+            BoundExpression expression = (BoundExpression)this.Visit(node.Expression);
+            TypeSymbol? type = this.VisitType(node.Type);
+            return node.Update(expression, type);
         }
     }
 
@@ -15589,6 +15633,23 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
             return updatedNode;
         }
+
+        public override BoundNode? VisitUnsafeExpression(BoundUnsafeExpression node)
+        {
+            BoundExpression expression = (BoundExpression)this.Visit(node.Expression);
+            BoundUnsafeExpression updatedNode;
+
+            if (_updatedNullabilities.TryGetValue(node, out (NullabilityInfo Info, TypeSymbol? Type) infoAndType))
+            {
+                updatedNode = node.Update(expression, infoAndType.Type);
+                updatedNode.TopLevelNullability = infoAndType.Info;
+            }
+            else
+            {
+                updatedNode = node.Update(expression, node.Type);
+            }
+            return updatedNode;
+        }
     }
 
     internal sealed class BoundTreeDumperNodeProducer : BoundTreeVisitor<object?, TreeDumperNode>
@@ -17823,6 +17884,14 @@ namespace Microsoft.CodeAnalysis.CSharp
         {
             new TreeDumperNode("blockBody", null, new TreeDumperNode[] { Visit(node.BlockBody, null) }),
             new TreeDumperNode("refKind", node.RefKind, null),
+            new TreeDumperNode("type", node.Type, null),
+            new TreeDumperNode("isSuppressed", node.IsSuppressed, null),
+            new TreeDumperNode("hasErrors", node.HasErrors, null)
+        }
+        );
+        public override TreeDumperNode VisitUnsafeExpression(BoundUnsafeExpression node, object? arg) => new TreeDumperNode("unsafeExpression", null, new TreeDumperNode[]
+        {
+            new TreeDumperNode("expression", null, new TreeDumperNode[] { Visit(node.Expression, null) }),
             new TreeDumperNode("type", node.Type, null),
             new TreeDumperNode("isSuppressed", node.IsSuppressed, null),
             new TreeDumperNode("hasErrors", node.HasErrors, null)
